@@ -92,6 +92,38 @@
           "description": "Seconds to keep the relay on per cycle. Overrides the manufacturer default."
         }
       }
+    },
+    "turn_on": {
+      "name": "Turn on smart light",
+      "description": "Turns on the smart bulb via the light entity. Falls back to powering the relay if the light is unavailable, or power-cycles it if the relay is already on but the light is unresponsive.",
+      "fields": {
+        "brightness_pct": {
+          "name": "Brightness",
+          "description": "Target brightness in percent (1–100). Defaults to 85%."
+        },
+        "color_temp_kelvin": {
+          "name": "Color temperature",
+          "description": "Target color temperature in Kelvin. Omit to keep the bulb's current value."
+        }
+      }
+    },
+    "turn_off": {
+      "name": "Turn off smart light",
+      "description": "Turns off the smart bulb. Falls back to switching the relay off if the light is unavailable or does not respond."
+    },
+    "toggle": {
+      "name": "Toggle smart light",
+      "description": "Toggles the smart bulb on or off using the smart-light-first logic (light entity preferred, relay as fallback).",
+      "fields": {
+        "brightness_pct": {
+          "name": "Brightness",
+          "description": "Target brightness in percent when turning on (1–100). Defaults to 85%."
+        },
+        "color_temp_kelvin": {
+          "name": "Color temperature",
+          "description": "Target color temperature in Kelvin when turning on. Omit to keep the bulb's current value."
+        }
+      }
     }
   }
 }

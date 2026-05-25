@@ -46,3 +46,61 @@ factory_reset:
           step: 0.1
           unit_of_measurement: "s"
           mode: box
+
+turn_on:
+  target:
+    entity:
+      domain:
+        - light
+        - switch
+    device: {}
+  fields:
+    brightness_pct:
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 1
+          unit_of_measurement: "%"
+          mode: slider
+    color_temp_kelvin:
+      selector:
+        number:
+          min: 1000
+          max: 10000
+          step: 100
+          unit_of_measurement: "K"
+          mode: box
+
+turn_off:
+  target:
+    entity:
+      domain:
+        - light
+        - switch
+    device: {}
+
+toggle:
+  target:
+    entity:
+      domain:
+        - light
+        - switch
+    device: {}
+  fields:
+    brightness_pct:
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 1
+          unit_of_measurement: "%"
+          mode: slider
+    color_temp_kelvin:
+      selector:
+        number:
+          min: 1000
+          max: 10000
+          step: 100
+          unit_of_measurement: "K"
+          mode: box
