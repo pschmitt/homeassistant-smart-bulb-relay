@@ -134,6 +134,25 @@ def _display_name(entry: er.RegistryEntry) -> str:
     return entry.name or entry.original_name or entry.entity_id
 
 
+def _device_name(entry: er.RegistryEntry, device_reg: dr.DeviceRegistry) -> str | None:
+    if not entry.device_id:
+        return None
+    device = device_reg.async_get(entry.device_id)
+    return device.name_by_user or device.name if device else None
+
+
+def _pairing_label(
+    sw: er.RegistryEntry,
+    lt: er.RegistryEntry,
+    device_reg: dr.DeviceRegistry,
+) -> str:
+    sw_dev = _device_name(sw, device_reg)
+    lt_dev = _device_name(lt, device_reg)
+    relay_part = f"{sw_dev} ({sw.entity_id})" if sw_dev else sw.entity_id
+    light_part = f"{lt_dev} ({lt.entity_id})" if lt_dev else lt.entity_id
+    return f"{relay_part} → {light_part}"
+
+
 def _discover_candidates(
     entity_reg: er.EntityRegistry,
     device_reg: dr.DeviceRegistry,
@@ -264,7 +283,7 @@ class SmartBulbResetConfigFlow(ConfigFlow, domain=DOMAIN):
         options = [
             SelectOptionDict(
                 value=f"{sw.entity_id}|{lt.entity_id}",
-                label=f"{_display_name(sw)} → {_display_name(lt)}",
+                label=_pairing_label(sw, lt, device_reg),
             )
             for sw, lt in candidates
         ]
