@@ -67,23 +67,30 @@ def _is_supported_light(
     return any(kw in m for kw in SUPPORTED_LIGHT_MANUFACTURER_KEYWORDS)
 
 
-def _looks_like_light_relay(
-    entry: er.RegistryEntry, device_reg: dr.DeviceRegistry
-) -> bool:
-    """Return True if the switch name/id suggests it controls a light circuit."""
+_NON_RELAY_TOKENS = frozenset({"ble", "bluetooth"})
+
+
+def _looks_like_light_relay(entry: er.RegistryEntry) -> bool:
+    """Return True if the switch's own name/entity_id suggests it controls a light circuit.
+
+    Checks only entity-level identifiers (entity_id, name, original_name) —
+    NOT the device name, which is shared by all entities on the device and
+    would cause secondary entities (e.g. BLE proxy) to inherit it.
+
+    Entities whose tokenised identifiers contain "ble" or "bluetooth" are
+    excluded even if they pass the keyword test, because Shelly BLE proxy
+    entities get entity_ids like switch.office_light_aioshelly_ble_integration
+    where "light" comes from the device-name prefix.
+    """
     parts = [entry.entity_id]
     if entry.name:
         parts.append(entry.name)
     if entry.original_name:
         parts.append(entry.original_name)
-    if entry.device_id:
-        device = device_reg.async_get(entry.device_id)
-        if device:
-            if device.name:
-                parts.append(device.name)
-            if device.name_by_user:
-                parts.append(device.name_by_user)
     combined = " ".join(parts).lower()
+    tokens = set(combined.replace(".", " ").replace("_", " ").split())
+    if tokens & _NON_RELAY_TOKENS:
+        return False
     return any(kw in combined for kw in _RELAY_NAME_KEYWORDS)
 
 
@@ -112,7 +119,7 @@ def _discover_candidates(
             entity_domain == "switch"
             and entry.platform == "shelly"
             and entry.entity_id not in existing_relays
-            and _looks_like_light_relay(entry, device_reg)
+            and _looks_like_light_relay(entry)
         ):
             shelly_switches.append(entry)
         elif entity_domain == "light" and _is_supported_light(entry, device_reg):
