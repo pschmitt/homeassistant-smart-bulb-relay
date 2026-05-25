@@ -359,8 +359,15 @@ class SmartBulbResetConfigFlow(ConfigFlow, domain=DOMAIN):
         self._abort_if_unique_id_configured()
 
         entity_reg = er.async_get(self.hass)
+        device_reg = dr.async_get(self.hass)
+        title = light_entity_id  # last-resort fallback
         light_entry = entity_reg.async_get(light_entity_id)
-        title = _display_name(light_entry) if light_entry else light_entity_id
+        if light_entry and light_entry.device_id:
+            device = device_reg.async_get(light_entry.device_id)
+            if device:
+                title = device.name_by_user or device.name or title
+        elif light_entry:
+            title = light_entry.name or light_entry.original_name or title
 
         return self.async_create_entry(
             title=title,
