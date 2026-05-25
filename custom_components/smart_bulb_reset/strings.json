@@ -10,9 +10,9 @@
       },
       "auto_discover": {
         "title": "💡 Auto-discovered pairings",
-        "description": "Select a relay → bulb pairing to configure. Candidates are IKEA or Hue lights that share an area with a Shelly relay.",
+        "description": "All discovered relay → bulb pairings are pre-selected. Deselect any you don't want, then confirm to create them all at once. You can edit or delete individual pairings afterwards.",
         "data": {
-          "pairing": "Pairing"
+          "pairing": "Pairings"
         }
       },
       "manual": {

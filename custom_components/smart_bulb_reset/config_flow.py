@@ -277,7 +277,22 @@ class SmartBulbResetConfigFlow(ConfigFlow, domain=DOMAIN):
             return await self.async_step_manual()
 
         if user_input is not None:
-            relay_id, light_id = user_input["pairing"].split("|", 1)
+            selected: list[str] = user_input["pairing"]
+            # Spawn a bulk flow for every pairing except the last one so we
+            # can use async_create_entry (callable only once) for that one.
+            for pairing in selected[:-1]:
+                relay_id, light_id = pairing.split("|", 1)
+                self.hass.async_create_task(
+                    self.hass.config_entries.flow.async_init(
+                        DOMAIN,
+                        context={"source": "bulk"},
+                        data={
+                            CONF_RELAY_ENTITY_ID: relay_id,
+                            CONF_LIGHT_ENTITY_ID: light_id,
+                        },
+                    )
+                )
+            relay_id, light_id = selected[-1].split("|", 1)
             return await self._async_create_entry(relay_id, light_id)
 
         options = [
@@ -287,15 +302,31 @@ class SmartBulbResetConfigFlow(ConfigFlow, domain=DOMAIN):
             )
             for sw, lt in candidates
         ]
+        all_values = [o["value"] for o in options]
         return self.async_show_form(
             step_id="auto_discover",
             data_schema=vol.Schema(
                 {
-                    vol.Required("pairing"): SelectSelector(
-                        SelectSelectorConfig(options=options, mode=SelectSelectorMode.LIST)
+                    vol.Required("pairing", default=all_values): SelectSelector(
+                        SelectSelectorConfig(
+                            options=options,
+                            mode=SelectSelectorMode.LIST,
+                            multiple=True,
+                        )
                     )
                 }
             ),
+        )
+
+    async def async_step_bulk(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Programmatic entry point used when auto-discover creates multiple pairings at once."""
+        if user_input is None:
+            return self.async_abort(reason="already_configured")
+        return await self._async_create_entry(
+            user_input[CONF_RELAY_ENTITY_ID],
+            user_input[CONF_LIGHT_ENTITY_ID],
         )
 
     async def async_step_manual(
