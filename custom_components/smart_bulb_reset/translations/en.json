@@ -36,6 +36,18 @@
       "message": "Unsupported entity {entity_id}: expected a light or switch."
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "✏️ Edit pairing",
+        "description": "Update the relay switch or smart bulb for this pairing.",
+        "data": {
+          "relay_entity_id": "🔁 Relay switch",
+          "light_entity_id": "💡 Smart bulb"
+        }
+      }
+    }
+  },
   "services": {
     "power_cycle": {
       "name": "Power-cycle relay",
