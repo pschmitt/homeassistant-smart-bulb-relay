@@ -69,6 +69,26 @@ def _is_supported_light(
 
 _NON_RELAY_TOKENS = frozenset({"ble", "bluetooth"})
 
+# Lights whose names contain these words are secondary/accent fixtures that
+# are almost never wired through a relay (bedside tables, wardrobes, etc.).
+_SECONDARY_LIGHT_TOKENS = frozenset({
+    "bedside", "wardrobe", "couch", "sofa", "nightstand", "closet",
+})
+
+# Words ignored when computing relay↔light name overlap.
+_NAME_STOPWORDS = frozenset({
+    "light", "lights", "lamp", "switch", "shelly", "hue", "ikea",
+    "tradfri", "the", "a", "an", "of", "in", "for", "and", "or",
+})
+
+
+def _tokenise(text: str) -> set[str]:
+    return set(text.lower().replace(".", " ").replace("_", " ").split())
+
+
+def _meaningful_words(text: str) -> set[str]:
+    return _tokenise(text) - _NAME_STOPWORDS
+
 
 def _looks_like_light_relay(entry: er.RegistryEntry) -> bool:
     """Return True if the switch's own name/entity_id suggests it controls a light circuit.
@@ -88,10 +108,26 @@ def _looks_like_light_relay(entry: er.RegistryEntry) -> bool:
     if entry.original_name:
         parts.append(entry.original_name)
     combined = " ".join(parts).lower()
-    tokens = set(combined.replace(".", " ").replace("_", " ").split())
+    tokens = _tokenise(combined)
     if tokens & _NON_RELAY_TOKENS:
         return False
     return any(kw in combined for kw in _RELAY_NAME_KEYWORDS)
+
+
+def _is_secondary_light(entry: er.RegistryEntry) -> bool:
+    """Return True if the light name suggests a secondary/accent fixture."""
+    combined = " ".join(filter(None, [entry.name, entry.original_name, entry.entity_id]))
+    return bool(_tokenise(combined) & _SECONDARY_LIGHT_TOKENS)
+
+
+def _relay_meaningful_words(entry: er.RegistryEntry) -> set[str]:
+    """Meaningful words from the relay's name, falling back to its entity_id."""
+    parts = [entry.entity_id]
+    if entry.name:
+        parts.append(entry.name)
+    if entry.original_name:
+        parts.append(entry.original_name)
+    return _meaningful_words(" ".join(parts))
 
 
 def _display_name(entry: er.RegistryEntry) -> str:
@@ -105,11 +141,18 @@ def _discover_candidates(
 ) -> list[tuple[er.RegistryEntry, er.RegistryEntry]]:
     """Return area-matched (relay_switch, smart_light) pairs not yet configured.
 
-    Only Shelly switches whose name/entity_id contains a light-related keyword
-    are considered, filtering out appliance sockets that share the same area.
+    Filtering pipeline:
+    1. Relay must be a Shelly switch whose own name/entity_id contains a
+       light-related keyword (rules out appliance sockets) and no BLE tokens.
+    2. Light must be an IKEA or Hue device.
+    3. Light must not be a secondary fixture (bedside, wardrobe, couch …).
+    4. Relay and light must share at least one meaningful name word. If a
+       relay has no meaningful words (e.g. named just "Light") OR no light
+       in the area survives the overlap test, all primary lights in the area
+       are offered as a fallback.
     """
     shelly_switches: list[er.RegistryEntry] = []
-    smart_lights: list[er.RegistryEntry] = []
+    primary_lights: list[er.RegistryEntry] = []
 
     for entry in entity_reg.entities.values():
         if entry.disabled_by:
@@ -122,11 +165,15 @@ def _discover_candidates(
             and _looks_like_light_relay(entry)
         ):
             shelly_switches.append(entry)
-        elif entity_domain == "light" and _is_supported_light(entry, device_reg):
-            smart_lights.append(entry)
+        elif (
+            entity_domain == "light"
+            and _is_supported_light(entry, device_reg)
+            and not _is_secondary_light(entry)
+        ):
+            primary_lights.append(entry)
 
     lights_by_area: dict[str, list[er.RegistryEntry]] = {}
-    for light in smart_lights:
+    for light in primary_lights:
         area_id = _entity_area_id(light, device_reg)
         if area_id:
             lights_by_area.setdefault(area_id, []).append(light)
@@ -134,9 +181,18 @@ def _discover_candidates(
     candidates: list[tuple[er.RegistryEntry, er.RegistryEntry]] = []
     for switch in shelly_switches:
         area_id = _entity_area_id(switch, device_reg)
-        if area_id and area_id in lights_by_area:
-            for light in lights_by_area[area_id]:
-                candidates.append((switch, light))
+        if not area_id or area_id not in lights_by_area:
+            continue
+        area_lights = lights_by_area[area_id]
+        relay_words = _relay_meaningful_words(switch)
+        if relay_words:
+            matched = [
+                lt for lt in area_lights
+                if relay_words & _meaningful_words(_display_name(lt) + " " + lt.entity_id)
+            ]
+            area_lights = matched or area_lights  # fallback if nothing overlaps
+        for light in area_lights:
+            candidates.append((switch, light))
 
     return candidates
 
