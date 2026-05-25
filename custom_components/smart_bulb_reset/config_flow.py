@@ -1,4 +1,4 @@
-"""Config flow for Smart Bulb Relay."""
+"""Config flow for Smart Bulb Reset."""
 
 from __future__ import annotations
 
@@ -99,7 +99,7 @@ def _discover_candidates(
 
 
 class SmartBulbRelayConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Config flow for Smart Bulb Relay."""
+    """Config flow for Smart Bulb Reset."""
 
     VERSION = 1
 

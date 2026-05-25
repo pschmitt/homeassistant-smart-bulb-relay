@@ -1,0 +1,16 @@
+{
+  "domain": "smart_bulb_reset",
+  "name": "Smart Bulb Reset",
+  "codeowners": [
+    "@pschmitt"
+  ],
+  "config_flow": true,
+  "documentation": "https://github.com/pschmitt/homeassistant-smart-bulb-reset",
+  "integration_type": "service",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/pschmitt/homeassistant-smart-bulb-reset/issues",
+  "loggers": [
+    "custom_components.smart_bulb_reset"
+  ],
+  "version": "0.1.0"
+}

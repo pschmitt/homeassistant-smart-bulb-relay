@@ -1,4 +1,4 @@
-"""Smart Bulb Relay integration."""
+"""Smart Bulb Reset integration."""
 
 from __future__ import annotations
 

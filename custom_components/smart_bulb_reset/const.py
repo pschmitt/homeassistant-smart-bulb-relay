@@ -1,6 +1,6 @@
-"""Constants for the Smart Bulb Relay integration."""
+"""Constants for the Smart Bulb Reset integration."""
 
-DOMAIN = "smart_bulb_relay"
+DOMAIN = "smart_bulb_reset"
 
 CONF_RELAY_ENTITY_ID = "relay_entity_id"
 CONF_LIGHT_ENTITY_ID = "light_entity_id"

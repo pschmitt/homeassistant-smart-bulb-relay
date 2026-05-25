@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "💡 Add Smart Bulb Relay",
+        "title": "💡 Add Smart Bulb Reset",
         "description": "Link a smart bulb to the relay that powers it. Enables one-command power-cycling and future auto-heal automations.",
         "data": {
           "setup_type": "Setup method"
@@ -30,7 +30,7 @@
   },
   "exceptions": {
     "no_relay_for_light": {
-      "message": "No relay is paired with {entity_id}. Add a pairing via the Smart Bulb Relay integration first."
+      "message": "No relay is paired with {entity_id}. Add a pairing via the Smart Bulb Reset integration first."
     },
     "unsupported_entity": {
       "message": "Unsupported entity {entity_id}: expected a light or switch."
