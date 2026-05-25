@@ -1,0 +1,16 @@
+power_cycle:
+  fields:
+    entity_id:
+      selector:
+        entity:
+          domain:
+            - light
+            - switch
+    power_cycle_delay:
+      selector:
+        number:
+          min: 0.1
+          max: 60.0
+          step: 0.1
+          unit_of_measurement: "s"
+          mode: box

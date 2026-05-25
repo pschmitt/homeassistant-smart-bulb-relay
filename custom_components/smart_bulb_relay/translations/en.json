@@ -1,0 +1,55 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "💡 Add Smart Bulb Relay",
+        "description": "Link a smart bulb to the relay that powers it. Enables one-command power-cycling and future auto-heal automations.",
+        "data": {
+          "setup_type": "Setup method"
+        }
+      },
+      "auto_discover": {
+        "title": "💡 Auto-discovered pairings",
+        "description": "Select a relay → bulb pairing to configure. Candidates are IKEA or Hue lights that share an area with a Shelly relay.",
+        "data": {
+          "pairing": "Pairing"
+        }
+      },
+      "manual": {
+        "title": "💡 Manual pairing",
+        "description": "Select the relay switch and the smart bulb it powers.",
+        "data": {
+          "relay_entity_id": "🔁 Relay switch",
+          "light_entity_id": "💡 Smart bulb"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This relay/bulb pairing is already configured."
+    }
+  },
+  "exceptions": {
+    "no_relay_for_light": {
+      "message": "No relay is paired with {entity_id}. Add a pairing via the Smart Bulb Relay integration first."
+    },
+    "unsupported_entity": {
+      "message": "Unsupported entity {entity_id}: expected a light or switch."
+    }
+  },
+  "services": {
+    "power_cycle": {
+      "name": "Power-cycle relay",
+      "description": "Power-cycles the relay that powers a paired smart bulb, or any switch entity directly.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "The paired smart light (relay resolved automatically) or a switch to cycle directly."
+        },
+        "power_cycle_delay": {
+          "name": "Power-cycle delay",
+          "description": "Seconds to keep the relay off before turning it back on."
+        }
+      }
+    }
+  }
+}

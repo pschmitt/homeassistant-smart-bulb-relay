@@ -1,0 +1,16 @@
+{
+  "domain": "smart_bulb_relay",
+  "name": "Smart Bulb Relay",
+  "codeowners": [
+    "@pschmitt"
+  ],
+  "config_flow": true,
+  "documentation": "https://github.com/pschmitt/homeassistant-smart-bulb-relay",
+  "integration_type": "service",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/pschmitt/homeassistant-smart-bulb-relay/issues",
+  "loggers": [
+    "custom_components.smart_bulb_relay"
+  ],
+  "version": "0.1.0"
+}
