@@ -64,6 +64,24 @@
           "description": "Seconds to keep the relay off before turning it back on."
         }
       }
+    },
+    "factory_reset": {
+      "name": "Factory reset bulb",
+      "description": "Triggers a factory reset by power-cycling the relay the configured number of times. The sequence (toggle count and durations) is chosen automatically based on the bulb manufacturer (IKEA: 6 × 2 s, Hue/Philips: 3 × 5 s). Override the fields below to use a custom sequence.",
+      "fields": {
+        "toggle_count": {
+          "name": "Toggle count",
+          "description": "Number of off/on cycles. Overrides the manufacturer default."
+        },
+        "off_duration": {
+          "name": "Off duration",
+          "description": "Seconds to keep the relay off per cycle. Overrides the manufacturer default."
+        },
+        "on_duration": {
+          "name": "On duration",
+          "description": "Seconds to keep the relay on per cycle. Overrides the manufacturer default."
+        }
+      }
     }
   }
 }

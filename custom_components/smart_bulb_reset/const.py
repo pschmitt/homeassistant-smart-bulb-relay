@@ -9,6 +9,7 @@ CONF_POWER_CYCLE_DELAY = "power_cycle_delay"
 DEFAULT_POWER_CYCLE_DELAY = 2.0  # seconds
 
 SERVICE_POWER_CYCLE = "power_cycle"
+SERVICE_FACTORY_RESET = "factory_reset"
 
 # Manufacturer keywords used for auto-discovery (case-insensitive substring match).
 SUPPORTED_LIGHT_MANUFACTURER_KEYWORDS = ("ikea", "philips", "signify")
