@@ -153,6 +153,19 @@ def _pairing_label(
     return f"{relay_part} → {light_part}"
 
 
+def _relay_score(
+    sw: er.RegistryEntry,
+    lt: er.RegistryEntry,
+    device_reg: dr.DeviceRegistry,
+) -> int:
+    """Word-overlap score between relay (entity + device name) and light name."""
+    relay_words = _relay_meaningful_words(sw) | _meaningful_words(
+        _device_name(sw, device_reg) or ""
+    )
+    light_words = _meaningful_words(_display_name(lt) + " " + lt.entity_id)
+    return len(relay_words & light_words)
+
+
 def _discover_candidates(
     entity_reg: er.EntityRegistry,
     device_reg: dr.DeviceRegistry,
@@ -169,6 +182,10 @@ def _discover_candidates(
        relay has no meaningful words (e.g. named just "Light") OR no light
        in the area survives the overlap test, all primary lights in the area
        are offered as a fallback.
+    5. Per-light deduplication: when multiple relays match the same light, only
+       keep the relay(s) with the highest device-name-augmented overlap score.
+       This prevents a generic "living room" relay from shadowing the more
+       specific "living room table light" relay for the same IKEA bulb.
     """
     shelly_switches: list[er.RegistryEntry] = []
     primary_lights: list[er.RegistryEntry] = []
@@ -213,7 +230,23 @@ def _discover_candidates(
         for light in area_lights:
             candidates.append((switch, light))
 
-    return candidates
+    # Per-light deduplication: keep only the relay(s) with the highest
+    # device-name-augmented score for each light.  Ties (score == 0 included)
+    # are preserved so the user can still choose in ambiguous situations.
+    by_light: dict[str, list[tuple[er.RegistryEntry, er.RegistryEntry, int]]] = {}
+    for sw, lt in candidates:
+        score = _relay_score(sw, lt, device_reg)
+        by_light.setdefault(lt.entity_id, []).append((sw, lt, score))
+
+    deduped: list[tuple[er.RegistryEntry, er.RegistryEntry]] = []
+    for group in by_light.values():
+        best = max(s for _, _, s in group)
+        if best > 0:
+            deduped.extend((sw, lt) for sw, lt, s in group if s == best)
+        else:
+            deduped.extend((sw, lt) for sw, lt, _ in group)
+
+    return deduped
 
 
 # ---------------------------------------------------------------------------
