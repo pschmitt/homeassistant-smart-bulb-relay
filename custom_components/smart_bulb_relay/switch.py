@@ -26,7 +26,6 @@ from .const import (
     SHELLY_WATCHDOG_FORCE_FALLBACK_KEY,
 )
 from .registry import (
-    device_info_for_id,
     entry_light_device_id,
     entry_relay_device_id,
     resolve_light_entity,
@@ -70,14 +69,6 @@ async def async_setup_entry(
         )
         return
 
-    light_device = device_info_for_id(hass, light_device_id)
-    if light_device and light_device.identifiers:
-        light_device_info = DeviceInfo(identifiers=light_device.identifiers)
-        light_device_name = light_device.name_by_user or light_device.name or entry.title
-    else:
-        light_device_info = DeviceInfo(identifiers=shelly_device.identifiers)
-        light_device_name = entry.title
-
     async_add_entities(
         [
             ShellySmartModeSwitch(
@@ -88,8 +79,6 @@ async def async_setup_entry(
                 light_entity_id=light_entity_id,
                 shelly_device=shelly_device,
                 shelly_entry=shelly_entry,
-                device_info=light_device_info,
-                light_device_name=light_device_name,
             )
         ],
         update_before_add=True,
@@ -137,8 +126,6 @@ class ShellySmartModeSwitch(SwitchEntity):
         light_entity_id: str | None,
         shelly_device: dr.DeviceEntry,
         shelly_entry: ConfigEntry,
-        device_info: DeviceInfo,
-        light_device_name: str,
     ) -> None:
         self._entry = entry
         self._relay_device_id = relay_device_id
@@ -148,8 +135,8 @@ class ShellySmartModeSwitch(SwitchEntity):
         self._shelly_device_id = shelly_device.id
         self._shelly_entry = shelly_entry
         self._attr_unique_id = f"{relay_device_id}_smart_mode"
-        self._attr_device_info = device_info
-        self.entity_id = f"switch.{slugify(light_device_name)}_smart_mode"
+        self._attr_device_info = DeviceInfo(identifiers=shelly_device.identifiers)
+        self.entity_id = f"switch.{slugify(shelly_device.name_by_user or shelly_device.name)}_smart_mode"
         self._attr_extra_state_attributes = {
             "relay_device_id": relay_device_id,
             "relay_entity_id": relay_entity_id,
