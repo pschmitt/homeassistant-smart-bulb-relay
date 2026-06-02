@@ -216,6 +216,7 @@ def _discover_candidates(
         if (
             entity_domain == "switch"
             and entry.platform == "shelly"
+            and entry.entity_category is None
             and entry.device_id not in existing_relays
             and _looks_like_light_relay(entry)
         ):

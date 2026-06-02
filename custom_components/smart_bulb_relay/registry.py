@@ -52,13 +52,15 @@ def resolve_device_entity(
     *,
     platform: str | None = None,
 ) -> str | None:
-    """Resolve an enabled entity for a device/domain pair."""
+    """Resolve an enabled, non-config/diagnostic entity for a device/domain pair."""
     if not device_id:
         return None
     for entity_entry in er.async_get(hass).entities.values():
         if entity_entry.device_id != device_id:
             continue
         if entity_entry.disabled_by is not None:
+            continue
+        if entity_entry.entity_category is not None:
             continue
         if entity_entry.entity_id.split(".", 1)[0] != domain:
             continue
