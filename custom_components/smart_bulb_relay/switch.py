@@ -17,7 +17,6 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.util import slugify
 
 from .const import (
     CONF_SMART_MODE_ENABLED,
@@ -148,10 +147,7 @@ class ShellySmartModeSwitch(SwitchEntity):
 
     @property
     def suggested_object_id(self) -> str:
-        """Return a stable entity_id based on the Shelly relay entity."""
-        if self._relay_entity_id:
-            return f"{slugify(self._relay_entity_id.split('.', 1)[1])}_smart_mode"
-        return f"{slugify(self._entry.title)}_smart_mode"
+        return "smart_mode"
 
     @property
     def _host(self) -> str | None:
