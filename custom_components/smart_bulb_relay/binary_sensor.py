@@ -30,7 +30,10 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    power_sensor_entity_id = entry.options.get(CONF_POWER_SENSOR_ENTITY_ID)
+    power_sensor_entity_id = (
+        entry.options.get(CONF_POWER_SENSOR_ENTITY_ID)
+        or entry.data.get(CONF_POWER_SENSOR_ENTITY_ID)
+    )
     if not power_sensor_entity_id:
         return
 

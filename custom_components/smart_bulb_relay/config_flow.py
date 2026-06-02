@@ -424,16 +424,19 @@ class SmartBulbRelayConfigFlow(ConfigFlow, domain=DOMAIN):
             platform="shelly",
         )
         light_entity_id = resolve_device_entity(self.hass, light_device_id, "light")
+        power_sensor_entity_id = discover_power_sensor(self.hass, relay_device_id)
 
-        return self.async_create_entry(
-            title=title,
-            data={
-                CONF_RELAY_DEVICE_ID: relay_device_id,
-                CONF_LIGHT_DEVICE_ID: light_device_id,
-                CONF_RELAY_ENTITY_ID: relay_entity_id,
-                CONF_LIGHT_ENTITY_ID: light_entity_id,
-            },
-        )
+        data: dict = {
+            CONF_RELAY_DEVICE_ID: relay_device_id,
+            CONF_LIGHT_DEVICE_ID: light_device_id,
+            CONF_RELAY_ENTITY_ID: relay_entity_id,
+            CONF_LIGHT_ENTITY_ID: light_entity_id,
+        }
+        options: dict = {}
+        if power_sensor_entity_id:
+            options[CONF_POWER_SENSOR_ENTITY_ID] = power_sensor_entity_id
+
+        return self.async_create_entry(title=title, data=data, options=options)
 
 
 # ---------------------------------------------------------------------------
@@ -458,7 +461,7 @@ class SmartBulbRelayOptionsFlow(OptionsFlow):
         )
         current_power_sensor = self._config_entry.options.get(
             CONF_POWER_SENSOR_ENTITY_ID
-        ) or discover_power_sensor(self.hass, relay_device_id)
+        )
         current_threshold = self._config_entry.options.get(
             CONF_POWER_THRESHOLD_W, DEFAULT_POWER_THRESHOLD_W
         )
