@@ -1,4 +1,4 @@
-"""Services for the Smart Bulb Reset integration."""
+"""Services for the Smart Bulb Relay integration."""
 
 from __future__ import annotations
 
@@ -30,6 +30,14 @@ from .const import (
     SERVICE_TOGGLE,
     SERVICE_TURN_OFF,
     SERVICE_TURN_ON,
+)
+from .registry import (
+    device_id_for_entity,
+    entry_light_device_id,
+    entry_relay_device_id,
+    resolve_device_entity,
+    resolve_light_entity,
+    resolve_relay_entity,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -115,9 +123,15 @@ class _RelayTarget(NamedTuple):
 
 
 def _relay_for_light(hass: HomeAssistant, light_entity_id: str) -> str | None:
-    for data in hass.data.get(DOMAIN, {}).values():
-        if isinstance(data, dict) and data.get("light") == light_entity_id:
-            return data["relay"]
+    light_device_id = device_id_for_entity(hass, light_entity_id)
+    for entry in hass.config_entries.async_entries(DOMAIN):
+        configured_light_device = entry_light_device_id(hass, entry)
+        if configured_light_device and configured_light_device == light_device_id:
+            return resolve_relay_entity(hass, entry)
+        if not configured_light_device:
+            data = hass.data.get(DOMAIN, {}).get(entry.entry_id, {})
+            if isinstance(data, dict) and data.get("light") == light_entity_id:
+                return data["relay"]
     return None
 
 
@@ -156,15 +170,34 @@ def _resolve_targets(hass: HomeAssistant, call_data: dict) -> list[_RelayTarget]
     raw_did = call_data.get(CONF_DEVICE_ID)
     if raw_did:
         dids = [raw_did] if isinstance(raw_did, str) else list(raw_did)
-        entity_reg = er.async_get(hass)
         for did in dids:
             found = False
-            for entry in entity_reg.entities.values():
-                if entry.device_id != did or entry.entity_id.split(".")[0] != "light":
-                    continue
-                relay = _relay_for_light(hass, entry.entity_id)
+            for config_entry in hass.config_entries.async_entries(DOMAIN):
+                relay_device = entry_relay_device_id(hass, config_entry)
+                light_device = entry_light_device_id(hass, config_entry)
+                if light_device == did:
+                    relay = resolve_relay_entity(hass, config_entry)
+                    light = resolve_light_entity(hass, config_entry)
+                    if relay:
+                        _add(relay, light)
+                        found = True
+                elif relay_device == did:
+                    relay = resolve_relay_entity(hass, config_entry)
+                    if relay:
+                        _add(relay, None)
+                        found = True
+            if not found:
+                for entry in er.async_get(hass).entities.values():
+                    if entry.device_id != did or entry.entity_id.split(".")[0] != "light":
+                        continue
+                    relay = _relay_for_light(hass, entry.entity_id)
+                    if relay:
+                        _add(relay, entry.entity_id)
+                        found = True
+            if not found:
+                relay = resolve_device_entity(hass, did, "switch", platform="shelly")
                 if relay:
-                    _add(relay, entry.entity_id)
+                    _add(relay, None)
                     found = True
             if not found:
                 raise ServiceValidationError(

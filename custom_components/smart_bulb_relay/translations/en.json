@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "💡 Add Smart Bulb Reset",
+        "title": "💡 Add Smart Bulb Relay",
         "description": "Link a smart bulb to the relay that powers it. Enables one-command power-cycling and future auto-heal automations.",
         "data": {
           "setup_type": "Setup method"
@@ -19,6 +19,8 @@
         "title": "💡 Manual pairing",
         "description": "Select the relay switch and the smart bulb it powers.",
         "data": {
+          "relay_device_id": "🔁 Relay device",
+          "light_device_id": "💡 Smart bulb device",
           "relay_entity_id": "🔁 Relay switch",
           "light_entity_id": "💡 Smart bulb"
         }
@@ -30,10 +32,10 @@
   },
   "exceptions": {
     "no_relay_for_light": {
-      "message": "No relay is paired with {entity_id}. Add a pairing via the Smart Bulb Reset integration first."
+      "message": "No relay is paired with {entity_id}. Add a pairing via the Smart Bulb Relay integration first."
     },
     "no_relay_for_device": {
-      "message": "No paired relay found for device {device_id}. Add a pairing via the Smart Bulb Reset integration first."
+      "message": "No paired relay found for device {device_id}. Add a pairing via the Smart Bulb Relay integration first."
     },
     "unsupported_entity": {
       "message": "Unsupported entity {entity_id}: expected a light or switch."
@@ -48,6 +50,8 @@
         "title": "✏️ Edit pairing",
         "description": "Update the relay switch or smart bulb for this pairing.",
         "data": {
+          "relay_device_id": "🔁 Relay device",
+          "light_device_id": "💡 Smart bulb device",
           "relay_entity_id": "🔁 Relay switch",
           "light_entity_id": "💡 Smart bulb"
         }
@@ -61,6 +65,11 @@
       },
       "factory_reset": {
         "name": "Factory Reset"
+      }
+    },
+    "switch": {
+      "smart_mode": {
+        "name": "Smart Mode"
       }
     }
   },

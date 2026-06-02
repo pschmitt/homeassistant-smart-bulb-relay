@@ -1,17 +1,23 @@
-"""Constants for the Smart Bulb Reset integration."""
+"""Constants for the Smart Bulb Relay integration."""
 
-DOMAIN = "smart_bulb_reset"
+DOMAIN = "smart_bulb_relay"
 
 CONF_RELAY_ENTITY_ID = "relay_entity_id"
 CONF_LIGHT_ENTITY_ID = "light_entity_id"
+CONF_RELAY_DEVICE_ID = "relay_device_id"
+CONF_LIGHT_DEVICE_ID = "light_device_id"
 CONF_POWER_CYCLE_DELAY = "power_cycle_delay"
 CONF_BRIGHTNESS_PCT = "brightness_pct"
 CONF_COLOR_TEMP_KELVIN = "color_temp_kelvin"
 CONF_LIGHT_CONTROL_TIMEOUT = "light_control_timeout"
+CONF_SMART_MODE_ENABLED = "smart_mode_enabled"
 
 DEFAULT_POWER_CYCLE_DELAY = 2.0       # seconds
 DEFAULT_BRIGHTNESS_PCT = 85           # percent
 DEFAULT_LIGHT_CONTROL_TIMEOUT = 1.0   # seconds
+DEFAULT_SMART_MODE_ENABLED = True
+
+SHELLY_WATCHDOG_FORCE_FALLBACK_KEY = "ha-watchdog-force-fallback"
 
 SERVICE_POWER_CYCLE = "power_cycle"
 SERVICE_FACTORY_RESET = "factory_reset"

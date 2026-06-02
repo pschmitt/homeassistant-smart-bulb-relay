@@ -8,6 +8,11 @@
       "factory_reset": {
         "default": "mdi:restore"
       }
+    },
+    "switch": {
+      "smart_mode": {
+        "default": "mdi:brain"
+      }
     }
   }
 }

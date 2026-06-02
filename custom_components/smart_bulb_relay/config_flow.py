@@ -1,4 +1,4 @@
-"""Config flow for Smart Bulb Reset."""
+"""Config flow for Smart Bulb Relay."""
 
 from __future__ import annotations
 
@@ -12,8 +12,9 @@ from homeassistant.core import callback
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.selector import (
-    EntitySelector,
-    EntitySelectorConfig,
+    BooleanSelector,
+    DeviceSelector,
+    DeviceSelectorConfig,
     SelectOptionDict,
     SelectSelector,
     SelectSelectorConfig,
@@ -21,10 +22,19 @@ from homeassistant.helpers.selector import (
 )
 
 from .const import (
+    CONF_LIGHT_DEVICE_ID,
     CONF_LIGHT_ENTITY_ID,
+    CONF_RELAY_DEVICE_ID,
     CONF_RELAY_ENTITY_ID,
+    CONF_SMART_MODE_ENABLED,
+    DEFAULT_SMART_MODE_ENABLED,
     DOMAIN,
     SUPPORTED_LIGHT_MANUFACTURER_KEYWORDS,
+)
+from .registry import (
+    entry_light_device_id,
+    entry_relay_device_id,
+    resolve_device_entity,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -197,7 +207,7 @@ def _discover_candidates(
         if (
             entity_domain == "switch"
             and entry.platform == "shelly"
-            and entry.entity_id not in existing_relays
+            and entry.device_id not in existing_relays
             and _looks_like_light_relay(entry)
         ):
             shelly_switches.append(entry)
@@ -253,22 +263,22 @@ def _discover_candidates(
 # Config flow
 # ---------------------------------------------------------------------------
 
-class SmartBulbResetConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Config flow for Smart Bulb Reset."""
+class SmartBulbRelayConfigFlow(ConfigFlow, domain=DOMAIN):
+    """Config flow for Smart Bulb Relay."""
 
-    VERSION = 1
+    VERSION = 2
 
     @staticmethod
     @callback
-    def async_get_options_flow(config_entry: ConfigEntry) -> SmartBulbResetOptionsFlow:
-        return SmartBulbResetOptionsFlow(config_entry)
+    def async_get_options_flow(config_entry: ConfigEntry) -> SmartBulbRelayOptionsFlow:
+        return SmartBulbRelayOptionsFlow(config_entry)
 
     @property
     def _configured_relays(self) -> set[str]:
         return {
-            e.data[CONF_RELAY_ENTITY_ID]
+            device_id
             for e in self._async_current_entries()
-            if CONF_RELAY_ENTITY_ID in e.data
+            if (device_id := entry_relay_device_id(self.hass, e)) is not None
         }
 
     async def async_step_user(
@@ -314,26 +324,27 @@ class SmartBulbResetConfigFlow(ConfigFlow, domain=DOMAIN):
             # Spawn a bulk flow for every pairing except the last one so we
             # can use async_create_entry (callable only once) for that one.
             for pairing in selected[:-1]:
-                relay_id, light_id = pairing.split("|", 1)
+                relay_device_id, light_device_id = pairing.split("|", 1)
                 self.hass.async_create_task(
                     self.hass.config_entries.flow.async_init(
                         DOMAIN,
                         context={"source": "bulk"},
                         data={
-                            CONF_RELAY_ENTITY_ID: relay_id,
-                            CONF_LIGHT_ENTITY_ID: light_id,
+                            CONF_RELAY_DEVICE_ID: relay_device_id,
+                            CONF_LIGHT_DEVICE_ID: light_device_id,
                         },
                     )
                 )
-            relay_id, light_id = selected[-1].split("|", 1)
-            return await self._async_create_entry(relay_id, light_id)
+            relay_device_id, light_device_id = selected[-1].split("|", 1)
+            return await self._async_create_entry(relay_device_id, light_device_id)
 
         options = [
             SelectOptionDict(
-                value=f"{sw.entity_id}|{lt.entity_id}",
+                value=f"{sw.device_id}|{lt.device_id}",
                 label=_pairing_label(sw, lt, device_reg),
             )
             for sw, lt in candidates
+            if sw.device_id and lt.device_id
         ]
         all_values = [o["value"] for o in options]
         return self.async_show_form(
@@ -358,8 +369,8 @@ class SmartBulbResetConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is None:
             return self.async_abort(reason="already_configured")
         return await self._async_create_entry(
-            user_input[CONF_RELAY_ENTITY_ID],
-            user_input[CONF_LIGHT_ENTITY_ID],
+            user_input[CONF_RELAY_DEVICE_ID],
+            user_input[CONF_LIGHT_DEVICE_ID],
         )
 
     async def async_step_manual(
@@ -367,44 +378,49 @@ class SmartBulbResetConfigFlow(ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult:
         if user_input is not None:
             return await self._async_create_entry(
-                user_input[CONF_RELAY_ENTITY_ID],
-                user_input[CONF_LIGHT_ENTITY_ID],
+                user_input[CONF_RELAY_DEVICE_ID],
+                user_input[CONF_LIGHT_DEVICE_ID],
             )
 
         return self.async_show_form(
             step_id="manual",
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_RELAY_ENTITY_ID): EntitySelector(
-                        EntitySelectorConfig(domain="switch")
+                    vol.Required(CONF_RELAY_DEVICE_ID): DeviceSelector(
+                        DeviceSelectorConfig(integration="shelly")
                     ),
-                    vol.Required(CONF_LIGHT_ENTITY_ID): EntitySelector(
-                        EntitySelectorConfig(domain="light")
+                    vol.Required(CONF_LIGHT_DEVICE_ID): DeviceSelector(
+                        DeviceSelectorConfig(entity={"domain": "light"})
                     ),
                 }
             ),
         )
 
     async def _async_create_entry(
-        self, relay_entity_id: str, light_entity_id: str
+        self, relay_device_id: str, light_device_id: str
     ) -> ConfigFlowResult:
-        await self.async_set_unique_id(f"{relay_entity_id}__{light_entity_id}")
+        await self.async_set_unique_id(f"{relay_device_id}__{light_device_id}")
         self._abort_if_unique_id_configured()
 
-        entity_reg = er.async_get(self.hass)
         device_reg = dr.async_get(self.hass)
-        title = light_entity_id  # last-resort fallback
-        light_entry = entity_reg.async_get(light_entity_id)
-        if light_entry and light_entry.device_id:
-            device = device_reg.async_get(light_entry.device_id)
-            if device:
-                title = device.name_by_user or device.name or title
-        elif light_entry:
-            title = light_entry.name or light_entry.original_name or title
+        title = light_device_id
+        device = device_reg.async_get(light_device_id)
+        if device:
+            title = device.name_by_user or device.name or title
+
+        relay_entity_id = resolve_device_entity(
+            self.hass,
+            relay_device_id,
+            "switch",
+            platform="shelly",
+        )
+        light_entity_id = resolve_device_entity(self.hass, light_device_id, "light")
 
         return self.async_create_entry(
             title=title,
             data={
+                CONF_RELAY_DEVICE_ID: relay_device_id,
+                CONF_LIGHT_DEVICE_ID: light_device_id,
                 CONF_RELAY_ENTITY_ID: relay_entity_id,
                 CONF_LIGHT_ENTITY_ID: light_entity_id,
             },
@@ -415,15 +431,11 @@ class SmartBulbResetConfigFlow(ConfigFlow, domain=DOMAIN):
 # Options flow — edit an existing pairing
 # ---------------------------------------------------------------------------
 
-class SmartBulbResetOptionsFlow(OptionsFlow):
+class SmartBulbRelayOptionsFlow(OptionsFlow):
     """Allow editing a relay/light pairing after initial setup."""
 
     def __init__(self, config_entry: ConfigEntry) -> None:
         self._config_entry = config_entry
-
-    def _current(self, key: str) -> str:
-        """Return effective value for key (options override data)."""
-        return self._config_entry.options.get(key) or self._config_entry.data[key]
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -431,18 +443,25 @@ class SmartBulbResetOptionsFlow(OptionsFlow):
         if user_input is not None:
             return self.async_create_entry(data=user_input)
 
+        current_smart_mode = self._config_entry.options.get(
+            CONF_SMART_MODE_ENABLED, DEFAULT_SMART_MODE_ENABLED
+        )
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema(
                 {
                     vol.Required(
-                        CONF_RELAY_ENTITY_ID,
-                        default=self._current(CONF_RELAY_ENTITY_ID),
-                    ): EntitySelector(EntitySelectorConfig(domain="switch")),
+                        CONF_RELAY_DEVICE_ID,
+                        default=entry_relay_device_id(self.hass, self._config_entry),
+                    ): DeviceSelector(DeviceSelectorConfig(integration="shelly")),
                     vol.Required(
-                        CONF_LIGHT_ENTITY_ID,
-                        default=self._current(CONF_LIGHT_ENTITY_ID),
-                    ): EntitySelector(EntitySelectorConfig(domain="light")),
+                        CONF_LIGHT_DEVICE_ID,
+                        default=entry_light_device_id(self.hass, self._config_entry),
+                    ): DeviceSelector(DeviceSelectorConfig(entity={"domain": "light"})),
+                    vol.Optional(
+                        CONF_SMART_MODE_ENABLED,
+                        default=current_smart_mode,
+                    ): BooleanSelector(),
                 }
             ),
         )
