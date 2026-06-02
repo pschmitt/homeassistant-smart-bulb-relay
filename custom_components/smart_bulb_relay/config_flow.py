@@ -15,6 +15,11 @@ from homeassistant.helpers.selector import (
     BooleanSelector,
     DeviceSelector,
     DeviceSelectorConfig,
+    EntitySelector,
+    EntitySelectorConfig,
+    NumberSelector,
+    NumberSelectorConfig,
+    NumberSelectorMode,
     SelectOptionDict,
     SelectSelector,
     SelectSelectorConfig,
@@ -24,14 +29,18 @@ from homeassistant.helpers.selector import (
 from .const import (
     CONF_LIGHT_DEVICE_ID,
     CONF_LIGHT_ENTITY_ID,
+    CONF_POWER_SENSOR_ENTITY_ID,
+    CONF_POWER_THRESHOLD_W,
     CONF_RELAY_DEVICE_ID,
     CONF_RELAY_ENTITY_ID,
     CONF_SMART_MODE_ENABLED,
+    DEFAULT_POWER_THRESHOLD_W,
     DEFAULT_SMART_MODE_ENABLED,
     DOMAIN,
     SUPPORTED_LIGHT_MANUFACTURER_KEYWORDS,
 )
 from .registry import (
+    discover_power_sensor,
     entry_light_device_id,
     entry_relay_device_id,
     resolve_device_entity,
@@ -443,8 +452,15 @@ class SmartBulbRelayOptionsFlow(OptionsFlow):
         if user_input is not None:
             return self.async_create_entry(data=user_input)
 
+        relay_device_id = entry_relay_device_id(self.hass, self._config_entry)
         current_smart_mode = self._config_entry.options.get(
             CONF_SMART_MODE_ENABLED, DEFAULT_SMART_MODE_ENABLED
+        )
+        current_power_sensor = self._config_entry.options.get(
+            CONF_POWER_SENSOR_ENTITY_ID
+        ) or discover_power_sensor(self.hass, relay_device_id)
+        current_threshold = self._config_entry.options.get(
+            CONF_POWER_THRESHOLD_W, DEFAULT_POWER_THRESHOLD_W
         )
         return self.async_show_form(
             step_id="init",
@@ -452,7 +468,7 @@ class SmartBulbRelayOptionsFlow(OptionsFlow):
                 {
                     vol.Required(
                         CONF_RELAY_DEVICE_ID,
-                        default=entry_relay_device_id(self.hass, self._config_entry),
+                        default=relay_device_id,
                     ): DeviceSelector(DeviceSelectorConfig(integration="shelly")),
                     vol.Required(
                         CONF_LIGHT_DEVICE_ID,
@@ -462,6 +478,27 @@ class SmartBulbRelayOptionsFlow(OptionsFlow):
                         CONF_SMART_MODE_ENABLED,
                         default=current_smart_mode,
                     ): BooleanSelector(),
+                    vol.Optional(
+                        CONF_POWER_SENSOR_ENTITY_ID,
+                        default=current_power_sensor,
+                    ): EntitySelector(
+                        EntitySelectorConfig(
+                            domain="sensor",
+                            device_class="power",
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_POWER_THRESHOLD_W,
+                        default=current_threshold,
+                    ): NumberSelector(
+                        NumberSelectorConfig(
+                            min=0,
+                            max=100,
+                            step=0.1,
+                            unit_of_measurement="W",
+                            mode=NumberSelectorMode.BOX,
+                        )
+                    ),
                 }
             ),
         )

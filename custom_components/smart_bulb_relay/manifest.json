@@ -12,6 +12,7 @@
     "custom_components.smart_bulb_relay"
   ],
   "platforms": [
+    "binary_sensor",
     "button",
     "switch"
   ],

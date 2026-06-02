@@ -20,7 +20,7 @@ from .registry import (
 )
 from .services import async_register_services, async_unregister_services
 
-PLATFORMS = ["button", "switch"]
+PLATFORMS = ["binary_sensor", "button", "switch"]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

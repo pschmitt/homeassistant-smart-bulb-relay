@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
@@ -95,6 +96,26 @@ def resolve_light_entity(hass: HomeAssistant, entry: ConfigEntry) -> str | None:
     legacy_entity_id = effective_entry_value(entry, CONF_LIGHT_ENTITY_ID)
     if legacy_entity_id and er.async_get(hass).async_get(legacy_entity_id):
         return legacy_entity_id
+    return None
+
+
+def discover_power_sensor(
+    hass: HomeAssistant,
+    relay_device_id: str | None,
+) -> str | None:
+    """Return the first power sensor entity on the relay device, if any."""
+    if not relay_device_id:
+        return None
+    for entity_entry in er.async_get(hass).entities.values():
+        if entity_entry.device_id != relay_device_id:
+            continue
+        if entity_entry.disabled_by is not None:
+            continue
+        if entity_entry.entity_id.split(".", 1)[0] != "sensor":
+            continue
+        if entity_entry.device_class == SensorDeviceClass.POWER or \
+                entity_entry.original_device_class == SensorDeviceClass.POWER:
+            return entity_entry.entity_id
     return None
 
 

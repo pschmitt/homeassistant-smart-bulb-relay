@@ -53,7 +53,15 @@
           "relay_device_id": "🔁 Relay device",
           "light_device_id": "💡 Smart bulb device",
           "relay_entity_id": "🔁 Relay switch",
-          "light_entity_id": "💡 Smart bulb"
+          "light_entity_id": "💡 Smart bulb",
+          "smart_mode_enabled": "🧠 Smart mode switch",
+          "power_sensor_entity_id": "⚡ Power sensor",
+          "power_threshold_w": "📏 Load threshold"
+        },
+        "data_description": {
+          "smart_mode_enabled": "Expose a switch entity that toggles the Shelly watchdog smart/fallback mode.",
+          "power_sensor_entity_id": "Power sensor on the relay circuit. Auto-discovered from the relay device if not set.",
+          "power_threshold_w": "Wattage above which the Smart Bulb Status sensor reports the bulb as on."
         }
       }
     }
@@ -65,6 +73,11 @@
       },
       "factory_reset": {
         "name": "Factory Reset"
+      }
+    },
+    "binary_sensor": {
+      "bulb_status": {
+        "name": "Smart Bulb Status"
       }
     },
     "switch": {

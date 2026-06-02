@@ -1,6 +1,15 @@
 {
   "integration": "mdi:lightbulb-auto",
   "entity": {
+    "binary_sensor": {
+      "bulb_status": {
+        "default": "mdi:lightbulb-outline",
+        "state": {
+          "on": "mdi:lightbulb-on",
+          "off": "mdi:lightbulb-off-outline"
+        }
+      }
+    },
     "button": {
       "power_cycle": {
         "default": "mdi:restart"
