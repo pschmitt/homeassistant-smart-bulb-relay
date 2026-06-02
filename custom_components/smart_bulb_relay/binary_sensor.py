@@ -70,7 +70,7 @@ class BulbStatusBinarySensor(BinarySensorEntity):
 
     _attr_has_entity_name = True
     _attr_entity_category = EntityCategory.DIAGNOSTIC
-    _attr_device_class = BinarySensorDeviceClass.POWER
+    _attr_device_class = BinarySensorDeviceClass.LIGHT
     _attr_translation_key = "bulb_status"
 
     def __init__(
