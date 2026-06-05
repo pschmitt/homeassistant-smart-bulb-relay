@@ -104,3 +104,7 @@ toggle:
           step: 100
           unit_of_measurement: "K"
           mode: box
+
+make_all_dumb: {}
+
+make_all_smart: {}

@@ -26,6 +26,8 @@ from .const import (
     DEFAULT_POWER_CYCLE_DELAY,
     DOMAIN,
     SERVICE_FACTORY_RESET,
+    SERVICE_MAKE_ALL_DUMB,
+    SERVICE_MAKE_ALL_SMART,
     SERVICE_POWER_CYCLE,
     SERVICE_TOGGLE,
     SERVICE_TURN_OFF,
@@ -422,6 +424,8 @@ _ALL_SERVICES = (
     SERVICE_TURN_ON,
     SERVICE_TURN_OFF,
     SERVICE_TOGGLE,
+    SERVICE_MAKE_ALL_DUMB,
+    SERVICE_MAKE_ALL_SMART,
 )
 
 
@@ -469,11 +473,43 @@ async def async_register_services(hass: HomeAssistant) -> None:
         for t in _require_targets(hass, call.data):
             await _do_toggle(hass, t.relay, t.light_entity_id, brightness_pct, color_temp_kelvin, timeout)
 
-    hass.services.async_register(DOMAIN, SERVICE_POWER_CYCLE,   _handle_power_cycle,   schema=_POWER_CYCLE_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_FACTORY_RESET, _handle_factory_reset, schema=_FACTORY_RESET_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_TURN_ON,       _handle_turn_on,       schema=_TURN_ON_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_TURN_OFF,      _handle_turn_off,      schema=_TURN_OFF_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_TOGGLE,        _handle_toggle,        schema=_TOGGLE_SCHEMA)
+    def _smart_mode_entities() -> list[str]:
+        entity_reg = er.async_get(hass)
+        return [
+            entry.entity_id
+            for entry in entity_reg.entities.values()
+            if entry.platform == DOMAIN
+            and entry.unique_id
+            and entry.unique_id.endswith("_smart_mode")
+        ]
+
+    async def _handle_make_all_dumb(_call: ServiceCall) -> None:
+        entities = _smart_mode_entities()
+        if not entities:
+            _LOGGER.warning("make_all_dumb: no smart-mode switch entities found")
+            return
+        _LOGGER.debug("make_all_dumb: turning off %s", entities)
+        await hass.services.async_call(
+            "switch", "turn_off", {"entity_id": entities}, blocking=True
+        )
+
+    async def _handle_make_all_smart(_call: ServiceCall) -> None:
+        entities = _smart_mode_entities()
+        if not entities:
+            _LOGGER.warning("make_all_smart: no smart-mode switch entities found")
+            return
+        _LOGGER.debug("make_all_smart: turning on %s", entities)
+        await hass.services.async_call(
+            "switch", "turn_on", {"entity_id": entities}, blocking=True
+        )
+
+    hass.services.async_register(DOMAIN, SERVICE_POWER_CYCLE,    _handle_power_cycle,    schema=_POWER_CYCLE_SCHEMA)
+    hass.services.async_register(DOMAIN, SERVICE_FACTORY_RESET,  _handle_factory_reset,  schema=_FACTORY_RESET_SCHEMA)
+    hass.services.async_register(DOMAIN, SERVICE_TURN_ON,        _handle_turn_on,        schema=_TURN_ON_SCHEMA)
+    hass.services.async_register(DOMAIN, SERVICE_TURN_OFF,       _handle_turn_off,       schema=_TURN_OFF_SCHEMA)
+    hass.services.async_register(DOMAIN, SERVICE_TOGGLE,         _handle_toggle,         schema=_TOGGLE_SCHEMA)
+    hass.services.async_register(DOMAIN, SERVICE_MAKE_ALL_DUMB,  _handle_make_all_dumb,  schema=vol.Schema({}))
+    hass.services.async_register(DOMAIN, SERVICE_MAKE_ALL_SMART, _handle_make_all_smart, schema=vol.Schema({}))
 
 
 def async_unregister_services(hass: HomeAssistant) -> None:

@@ -27,6 +27,8 @@ SERVICE_FACTORY_RESET = "factory_reset"
 SERVICE_TURN_ON = "turn_on"
 SERVICE_TURN_OFF = "turn_off"
 SERVICE_TOGGLE = "toggle"
+SERVICE_MAKE_ALL_DUMB = "make_all_dumb"
+SERVICE_MAKE_ALL_SMART = "make_all_smart"
 
 # Manufacturer keywords used for auto-discovery (case-insensitive substring match).
 SUPPORTED_LIGHT_MANUFACTURER_KEYWORDS = ("ikea", "philips", "signify")

@@ -146,6 +146,14 @@
           "description": "Target color temperature in Kelvin when turning on. Omit to keep the bulb's current value."
         }
       }
+    },
+    "make_all_dumb": {
+      "name": "Make all switches dumb",
+      "description": "Forces fallback (dumb) mode on every Smart Bulb Relay smart-mode switch, so all relays behave like normal wall switches."
+    },
+    "make_all_smart": {
+      "name": "Make all switches smart",
+      "description": "Restores smart mode on every Smart Bulb Relay smart-mode switch, re-enabling bulb-aware control for all relays."
     }
   }
 }
