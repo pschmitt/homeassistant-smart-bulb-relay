@@ -8,8 +8,10 @@ from homeassistant.core import HomeAssistant
 from .const import (
     CONF_LIGHT_DEVICE_ID,
     CONF_LIGHT_ENTITY_ID,
+    CONF_RAISE_REPAIRS,
     CONF_RELAY_DEVICE_ID,
     CONF_RELAY_ENTITY_ID,
+    DEFAULT_RAISE_REPAIRS,
     DOMAIN,
 )
 from .registry import (
@@ -18,6 +20,7 @@ from .registry import (
     resolve_light_entity,
     resolve_relay_entity,
 )
+from .repairs import BulbReachabilityWatcher
 from .services import async_register_services, async_unregister_services
 
 PLATFORMS = ["binary_sensor", "button", "switch"]
@@ -25,19 +28,34 @@ PLATFORMS = ["binary_sensor", "button", "switch"]
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][entry.entry_id] = {
+    light_entity_id = resolve_light_entity(hass, entry)
+    entry_data: dict = {
         "relay": resolve_relay_entity(hass, entry),
-        "light": resolve_light_entity(hass, entry),
+        "light": light_entity_id,
         "relay_device": entry_relay_device_id(hass, entry),
         "light_device": entry_light_device_id(hass, entry),
     }
+    hass.data[DOMAIN][entry.entry_id] = entry_data
     await async_register_services(hass)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_reload_on_options_change))
+
+    if entry.options.get(CONF_RAISE_REPAIRS, DEFAULT_RAISE_REPAIRS) and light_entity_id:
+        watcher = BulbReachabilityWatcher(
+            hass, entry, light_entity_id, light_name=entry.title
+        )
+        entry_data["watcher"] = watcher
+        watcher.start()
+
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    watcher: BulbReachabilityWatcher | None = (
+        hass.data.get(DOMAIN, {}).get(entry.entry_id, {}).get("watcher")
+    )
+    if watcher:
+        watcher.stop()
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id, None)

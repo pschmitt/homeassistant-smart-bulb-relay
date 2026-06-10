@@ -14,10 +14,13 @@ CONF_SMART_MODE_ENABLED = "smart_mode_enabled"
 CONF_POWER_SENSOR_ENTITY_ID = "power_sensor_entity_id"
 CONF_POWER_THRESHOLD_W = "power_threshold_w"
 
+CONF_RAISE_REPAIRS = "raise_repairs"
+
 DEFAULT_POWER_CYCLE_DELAY = 2.0       # seconds
 DEFAULT_BRIGHTNESS_PCT = 85           # percent
 DEFAULT_LIGHT_CONTROL_TIMEOUT = 1.0   # seconds
 DEFAULT_SMART_MODE_ENABLED = True
+DEFAULT_RAISE_REPAIRS = True
 DEFAULT_POWER_THRESHOLD_W = 1.0       # watts
 
 SHELLY_WATCHDOG_FORCE_FALLBACK_KEY = "ha-watchdog-force-fallback"

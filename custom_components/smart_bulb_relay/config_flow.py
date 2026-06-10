@@ -31,10 +31,12 @@ from .const import (
     CONF_LIGHT_ENTITY_ID,
     CONF_POWER_SENSOR_ENTITY_ID,
     CONF_POWER_THRESHOLD_W,
+    CONF_RAISE_REPAIRS,
     CONF_RELAY_DEVICE_ID,
     CONF_RELAY_ENTITY_ID,
     CONF_SMART_MODE_ENABLED,
     DEFAULT_POWER_THRESHOLD_W,
+    DEFAULT_RAISE_REPAIRS,
     DEFAULT_SMART_MODE_ENABLED,
     DOMAIN,
     SUPPORTED_LIGHT_MANUFACTURER_KEYWORDS,
@@ -460,6 +462,9 @@ class SmartBulbRelayOptionsFlow(OptionsFlow):
         current_smart_mode = self._config_entry.options.get(
             CONF_SMART_MODE_ENABLED, DEFAULT_SMART_MODE_ENABLED
         )
+        current_raise_repairs = self._config_entry.options.get(
+            CONF_RAISE_REPAIRS, DEFAULT_RAISE_REPAIRS
+        )
         current_power_sensor = self._config_entry.options.get(
             CONF_POWER_SENSOR_ENTITY_ID
         )
@@ -481,6 +486,10 @@ class SmartBulbRelayOptionsFlow(OptionsFlow):
                     vol.Optional(
                         CONF_SMART_MODE_ENABLED,
                         default=current_smart_mode,
+                    ): BooleanSelector(),
+                    vol.Optional(
+                        CONF_RAISE_REPAIRS,
+                        default=current_raise_repairs,
                     ): BooleanSelector(),
                     vol.Optional(
                         CONF_POWER_SENSOR_ENTITY_ID,

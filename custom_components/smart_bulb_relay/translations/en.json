@@ -55,15 +55,23 @@
           "relay_entity_id": "🔁 Relay switch",
           "light_entity_id": "💡 Smart bulb",
           "smart_mode_enabled": "🧠 Smart mode switch",
+          "raise_repairs": "🔧 Raise Repairs issue when unreachable",
           "power_sensor_entity_id": "⚡ Power sensor",
           "power_threshold_w": "📏 Load threshold"
         },
         "data_description": {
           "smart_mode_enabled": "Expose a switch entity that toggles the Shelly watchdog smart/fallback mode.",
+          "raise_repairs": "Create a Repairs issue in Settings when the bulb is unreachable for 5 minutes. The issue clears automatically when the device comes back.",
           "power_sensor_entity_id": "Power sensor on the relay circuit. Auto-discovered from the relay device if not set.",
           "power_threshold_w": "Wattage above which the Smart Bulb Status sensor reports the bulb as on."
         }
       }
+    }
+  },
+  "issues": {
+    "light_unreachable": {
+      "title": "{light_name} is unreachable",
+      "description": "**{light_name}** has been unreachable on the Zigbee network for more than 5 minutes. Power cycling the relay may restore connectivity.\n\nYou can power cycle from the device page or via the Smart Bulb Relay service."
     }
   },
   "entity": {
