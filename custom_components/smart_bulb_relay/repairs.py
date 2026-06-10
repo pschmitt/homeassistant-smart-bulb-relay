@@ -1,21 +1,26 @@
-"""Repairs watcher for Smart Bulb Relay.
+"""Repairs watcher and fix flow for Smart Bulb Relay.
 
 Raises a HA Repairs issue when a managed light is unreachable for 5 minutes,
 and clears it automatically when the device comes back.
+The issue is fixable: clicking "Fix Issue" offers a one-click power cycle.
 """
 
 from __future__ import annotations
 
 import logging
-from typing import Callable
+from typing import Any, Callable
 
+from homeassistant.components.repairs import RepairsFlow
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED, STATE_UNAVAILABLE
 from homeassistant.core import Event, HomeAssistant, callback
+from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.event import async_call_later, async_track_state_change_event
 
-from .const import DOMAIN
+from .const import DOMAIN, SERVICE_POWER_CYCLE
+
+_ISSUE_PREFIX = "light_unreachable"
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -109,15 +114,7 @@ class BulbReachabilityWatcher:
                 self._light_entity_id,
                 _UNREACHABLE_DELAY_S,
             )
-            ir.async_create_issue(
-                self._hass,
-                DOMAIN,
-                self._issue_id,
-                is_fixable=False,
-                severity=ir.IssueSeverity.WARNING,
-                translation_key="light_unreachable",
-                translation_placeholders={"light_name": self._light_name},
-            )
+            self._create_issue()
 
         self._cancel_timer = async_call_later(
             self._hass, _UNREACHABLE_DELAY_S, _raise
@@ -127,3 +124,65 @@ class BulbReachabilityWatcher:
         if self._cancel_timer is not None:
             self._cancel_timer()
             self._cancel_timer = None
+
+    def _create_issue(self) -> None:
+        ir.async_create_issue(
+            self._hass,
+            DOMAIN,
+            self._issue_id,
+            is_fixable=True,
+            severity=ir.IssueSeverity.WARNING,
+            translation_key="light_unreachable",
+            translation_placeholders={"light_name": self._light_name},
+        )
+
+
+# ---------------------------------------------------------------------------
+# Fix flow
+# ---------------------------------------------------------------------------
+
+async def async_create_fix_flow(
+    hass: HomeAssistant,
+    issue_id: str,
+    data: dict[str, Any] | None,
+) -> RepairsFlow:
+    """Return the appropriate repair flow for the given issue."""
+    if issue_id.startswith(_ISSUE_PREFIX):
+        entry_id = issue_id[len(_ISSUE_PREFIX) + 1:]  # strip "light_unreachable_"
+        return PowerCycleRepairFlow(entry_id)
+    raise ValueError(f"Unknown issue_id: {issue_id}")
+
+
+class PowerCycleRepairFlow(RepairsFlow):
+    """One-step repair flow: confirm → power cycle the relay."""
+
+    def __init__(self, entry_id: str) -> None:
+        self._entry_id = entry_id
+
+    @property
+    def _light_name(self) -> str:
+        entry = self.hass.config_entries.async_get_entry(self._entry_id)
+        return entry.title if entry else self._entry_id
+
+    @property
+    def _light_entity_id(self) -> str | None:
+        return self.hass.data.get(DOMAIN, {}).get(self._entry_id, {}).get("light")
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        if user_input is not None:
+            light = self._light_entity_id
+            if light:
+                await self.hass.services.async_call(
+                    DOMAIN,
+                    SERVICE_POWER_CYCLE,
+                    {"entity_id": light},
+                    blocking=False,
+                )
+            return self.async_create_entry(data={})
+
+        return self.async_show_form(
+            step_id="init",
+            description_placeholders={"light_name": self._light_name},
+        )

@@ -71,7 +71,15 @@
   "issues": {
     "light_unreachable": {
       "title": "{light_name} is unreachable",
-      "description": "**{light_name}** has been unreachable on the Zigbee network for more than 5 minutes. Power cycling the relay may restore connectivity.\n\nYou can power cycle from the device page or via the Smart Bulb Relay service."
+      "description": "**{light_name}** has been unreachable on the Zigbee network for more than 5 minutes. Power cycling the relay may restore connectivity.",
+      "fix_flow": {
+        "step": {
+          "init": {
+            "title": "Power cycle {light_name}",
+            "description": "This will briefly cut power to **{light_name}** via its relay to force it to reconnect to the Zigbee network.\n\nThe issue will reappear if the bulb is still unreachable after 5 minutes."
+          }
+        }
+      }
     }
   },
   "entity": {
