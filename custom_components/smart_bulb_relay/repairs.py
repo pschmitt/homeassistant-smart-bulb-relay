@@ -182,6 +182,16 @@ class BulbReachabilityWatcher:
             self._cancel_restore()
             self._cancel_restore = None
 
+    def reopen_after_fix(self) -> None:
+        """Re-raise the issue after a manual fix-flow power cycle.
+
+        Called after async_create_entry closes the fix flow (which internally
+        deletes the issue). The 1-second delay ensures HA has processed the flow
+        result before we re-create the issue so it stays visible until the light
+        actually reconnects.
+        """
+        async_call_later(self._hass, 1, lambda _now: self._create_issue())
+
     def _create_issue(self) -> None:
         ir.async_create_issue(
             self._hass,
@@ -237,6 +247,15 @@ class PowerCycleRepairFlow(RepairsFlow):
                     {"entity_id": light},
                     blocking=False,
                 )
+            # Re-raise the issue after the flow closes so it stays visible until
+            # the light actually reconnects; the watcher clears it then.
+            watcher = (
+                self.hass.data.get(DOMAIN, {})
+                .get(self._entry_id, {})
+                .get("watcher")
+            )
+            if watcher:
+                watcher.reopen_after_fix()
             return self.async_create_entry(data={})
 
         return self.async_show_form(
