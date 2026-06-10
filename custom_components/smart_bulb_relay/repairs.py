@@ -2,11 +2,13 @@
 
 Raises a HA Repairs issue when a managed light is unreachable for 5 minutes,
 and clears it automatically when the device comes back.
-The issue is fixable: clicking "Fix Issue" offers a one-click power cycle.
+The issue is fixable: clicking "Fix Issue" power-cycles the relay then shows a
+progress step that resolves automatically once the bulb reconnects.
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any, Callable
 
@@ -26,6 +28,7 @@ _LOGGER = logging.getLogger(__name__)
 
 _UNREACHABLE_DELAY_S = 5 * 60  # seconds — matches the automation's for: 00:05:00
 _RESTORE_DELAY_S = 5  # seconds after light comes back before restoring state
+_RECONNECT_TIMEOUT_S = 120  # max seconds to wait for reconnect in the fix flow
 
 
 class BulbReachabilityWatcher:
@@ -182,16 +185,6 @@ class BulbReachabilityWatcher:
             self._cancel_restore()
             self._cancel_restore = None
 
-    def reopen_after_fix(self) -> None:
-        """Re-raise the issue after a manual fix-flow power cycle.
-
-        Called after async_create_entry closes the fix flow (which internally
-        deletes the issue). The 1-second delay ensures HA has processed the flow
-        result before we re-create the issue so it stays visible until the light
-        actually reconnects.
-        """
-        async_call_later(self._hass, 1, lambda _now: self._create_issue())
-
     def _create_issue(self) -> None:
         ir.async_create_issue(
             self._hass,
@@ -221,10 +214,11 @@ async def async_create_fix_flow(
 
 
 class PowerCycleRepairFlow(RepairsFlow):
-    """One-step repair flow: confirm → power cycle the relay."""
+    """Two-step repair flow: confirm → wait for the bulb to reconnect."""
 
     def __init__(self, entry_id: str) -> None:
         self._entry_id = entry_id
+        self._wait_task: asyncio.Task | None = None
 
     @property
     def _light_name(self) -> str:
@@ -247,18 +241,52 @@ class PowerCycleRepairFlow(RepairsFlow):
                     {"entity_id": light},
                     blocking=False,
                 )
-            # Re-raise the issue after the flow closes so it stays visible until
-            # the light actually reconnects; the watcher clears it then.
-            watcher = (
-                self.hass.data.get(DOMAIN, {})
-                .get(self._entry_id, {})
-                .get("watcher")
-            )
-            if watcher:
-                watcher.reopen_after_fix()
-            return self.async_create_entry(data={})
+            return await self.async_step_wait_reconnect()
 
         return self.async_show_form(
             step_id="init",
             description_placeholders={"light_name": self._light_name},
         )
+
+    async def async_step_wait_reconnect(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        if not self._wait_task:
+            self._wait_task = self.hass.async_create_task(
+                self._wait_for_reconnect()
+            )
+
+        if not self._wait_task.done():
+            return self.async_show_progress(
+                step_id="wait_reconnect",
+                progress_action="wait_reconnect",
+                description_placeholders={"light_name": self._light_name},
+                progress_task=self._wait_task,
+            )
+
+        return self.async_create_entry(data={})
+
+    async def _wait_for_reconnect(self) -> None:
+        light = self._light_entity_id
+        if not light:
+            return
+        state = self.hass.states.get(light)
+        if state and state.state != STATE_UNAVAILABLE:
+            return
+
+        back = asyncio.Event()
+
+        @callback
+        def _on_state_change(event: Event) -> None:
+            new_state = event.data.get("new_state")
+            if new_state and new_state.state != STATE_UNAVAILABLE:
+                back.set()
+
+        unsub = async_track_state_change_event(self.hass, [light], _on_state_change)
+        try:
+            async with asyncio.timeout(_RECONNECT_TIMEOUT_S):
+                await back.wait()
+        except TimeoutError:
+            pass
+        finally:
+            unsub()

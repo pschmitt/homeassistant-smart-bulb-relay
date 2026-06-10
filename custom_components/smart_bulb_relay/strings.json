@@ -76,7 +76,11 @@
         "step": {
           "init": {
             "title": "Power cycle {light_name}",
-            "description": "This will briefly cut power to **{light_name}** via its relay to force it to reconnect to the Zigbee network.\n\nThe issue will reappear if the bulb is still unreachable after 5 minutes."
+            "description": "This will briefly cut power to **{light_name}** via its relay to force it to reconnect to the Zigbee network."
+          },
+          "wait_reconnect": {
+            "title": "Waiting for {light_name}…",
+            "description": "The relay has been power-cycled. This issue will resolve automatically once **{light_name}** reconnects to the Zigbee network."
           }
         }
       }
