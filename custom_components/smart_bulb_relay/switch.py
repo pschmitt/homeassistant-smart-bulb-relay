@@ -153,7 +153,7 @@ class ShellySmartModeSwitch(SwitchEntity):
         if not host:
             return None
         port = self._shelly_entry.data.get("port")
-        if port and int(port) != 80:
+        if port and str(port) != "80":
             return f"{host}:{port}"
         return str(host)
 
@@ -191,12 +191,13 @@ class ShellySmartModeSwitch(SwitchEntity):
             },
             blocking=True,
         )
-        await self._shelly_rpc(
+        result = await self._shelly_rpc(
             "ha-watchdog.ForceFallback" if forced else "ha-watchdog.ForceSmart",
             {},
         )
         self._attr_is_on = not forced
-        self._attr_available = True
+        # An unreachable device returns None — don't claim availability.
+        self._attr_available = result is not None
         self.async_write_ha_state()
 
     async def _shelly_rpc(

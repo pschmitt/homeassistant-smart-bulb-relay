@@ -251,27 +251,40 @@ class PowerCycleRepairFlow(RepairsFlow):
     async def async_step_wait_reconnect(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
+        light = self._light_entity_id
+        if light:
+            state = self.hass.states.get(light)
+            if state and state.state != STATE_UNAVAILABLE:
+                _LOGGER.debug(
+                    "Light %s is already reachable — completing fix flow", light
+                )
+                self._cleanup_wait()
+                return self.async_create_entry(data={})
+
+        if self._wait_task and self._wait_task.done():
+            self._wait_task = None
+            return self.async_create_entry(data={})
+
         if not self._wait_task:
             self._wait_task = self.hass.async_create_task(
                 self._wait_for_reconnect()
             )
 
-        if not self._wait_task.done():
-            return self.async_show_progress(
-                step_id="wait_reconnect",
-                progress_action="wait_reconnect",
-                description_placeholders={"light_name": self._light_name},
-                progress_task=self._wait_task,
-            )
+        return self.async_show_progress(
+            step_id="wait_reconnect",
+            progress_action="wait_reconnect",
+            description_placeholders={"light_name": self._light_name},
+            progress_task=self._wait_task,
+        )
 
-        return self.async_create_entry(data={})
+    def _cleanup_wait(self) -> None:
+        if self._wait_task and not self._wait_task.done():
+            self._wait_task.cancel()
+        self._wait_task = None
 
     async def _wait_for_reconnect(self) -> None:
         light = self._light_entity_id
         if not light:
-            return
-        state = self.hass.states.get(light)
-        if state and state.state != STATE_UNAVAILABLE:
             return
 
         back = asyncio.Event()
@@ -282,11 +295,21 @@ class PowerCycleRepairFlow(RepairsFlow):
             if new_state and new_state.state != STATE_UNAVAILABLE:
                 back.set()
 
+        # Subscribe before checking current state to avoid a race:
+        # if the light transitions from unavailable→available between our
+        # state read and the listener registration, we'd miss it.
         unsub = async_track_state_change_event(self.hass, [light], _on_state_change)
+
+        state = self.hass.states.get(light)
+        if state and state.state != STATE_UNAVAILABLE:
+            back.set()
+
         try:
             async with asyncio.timeout(_RECONNECT_TIMEOUT_S):
                 await back.wait()
         except TimeoutError:
-            pass
+            _LOGGER.warning(
+                "Timed out waiting for %s to reconnect after power cycle", light
+            )
         finally:
             unsub()

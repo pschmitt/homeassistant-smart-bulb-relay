@@ -78,17 +78,19 @@ async def _async_reload_on_options_change(hass: HomeAssistant, entry: ConfigEntr
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Migrate legacy entity-id based pairings to device-id based pairings."""
+    if entry.version > 1:
+        return True
     relay_device_id = entry_relay_device_id(hass, entry)
     light_device_id = entry_light_device_id(hass, entry)
+    if not relay_device_id or not light_device_id:
+        # Devices not resolvable (yet) — retry on the next start.
+        return True
     if (
-        entry.version > 1
-        or not relay_device_id
-        or not light_device_id
-        or (
-            entry.data.get(CONF_RELAY_DEVICE_ID) == relay_device_id
-            and entry.data.get(CONF_LIGHT_DEVICE_ID) == light_device_id
-        )
+        entry.data.get(CONF_RELAY_DEVICE_ID) == relay_device_id
+        and entry.data.get(CONF_LIGHT_DEVICE_ID) == light_device_id
     ):
+        # Already migrated — record the version so this stops re-running.
+        hass.config_entries.async_update_entry(entry, version=2)
         return True
 
     data = dict(entry.data)

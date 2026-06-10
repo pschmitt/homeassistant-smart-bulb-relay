@@ -67,7 +67,7 @@ _POWER_CYCLE_SCHEMA = vol.Schema(
 _FACTORY_RESET_SCHEMA = vol.Schema(
     {
         **_TARGET_FIELDS,
-        vol.Optional(CONF_TOGGLE_COUNT): vol.All(int, vol.Range(min=1, max=20)),
+        vol.Optional(CONF_TOGGLE_COUNT): vol.All(vol.Coerce(int), vol.Range(min=1, max=20)),
         vol.Optional(CONF_OFF_DURATION): vol.All(
             vol.Coerce(float), vol.Range(min=0.1, max=30.0)
         ),

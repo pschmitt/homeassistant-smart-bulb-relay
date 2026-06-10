@@ -493,7 +493,7 @@ class SmartBulbRelayOptionsFlow(OptionsFlow):
                     ): BooleanSelector(),
                     vol.Optional(
                         CONF_POWER_SENSOR_ENTITY_ID,
-                        default=current_power_sensor,
+                        description={"suggested_value": current_power_sensor},
                     ): EntitySelector(
                         EntitySelectorConfig(
                             domain="sensor",
