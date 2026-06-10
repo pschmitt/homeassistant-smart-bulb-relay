@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 
 from .const import (
     CONF_LIGHT_DEVICE_ID,
@@ -41,8 +42,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_on_unload(entry.add_update_listener(_async_reload_on_options_change))
 
     if entry.options.get(CONF_RAISE_REPAIRS, DEFAULT_RAISE_REPAIRS) and light_entity_id:
+        ent_reg = er.async_get(hass)
+        bulb_status_entity_id = ent_reg.async_get_entity_id(
+            "binary_sensor", DOMAIN, f"{entry.entry_id}_bulb_status"
+        )
         watcher = BulbReachabilityWatcher(
-            hass, entry, light_entity_id, light_name=entry.title
+            hass,
+            entry,
+            light_entity_id,
+            light_name=entry.title,
+            bulb_status_entity_id=bulb_status_entity_id,
         )
         entry_data["watcher"] = watcher
         watcher.start()

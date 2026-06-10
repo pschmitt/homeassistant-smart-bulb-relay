@@ -25,6 +25,7 @@ _ISSUE_PREFIX = "light_unreachable"
 _LOGGER = logging.getLogger(__name__)
 
 _UNREACHABLE_DELAY_S = 5 * 60  # seconds — matches the automation's for: 00:05:00
+_RESTORE_DELAY_S = 5  # seconds after light comes back before restoring state
 
 
 class BulbReachabilityWatcher:
@@ -36,14 +37,18 @@ class BulbReachabilityWatcher:
         entry: ConfigEntry,
         light_entity_id: str,
         light_name: str,
+        bulb_status_entity_id: str | None = None,
     ) -> None:
         self._hass = hass
         self._entry = entry
         self._light_entity_id = light_entity_id
         self._light_name = light_name
+        self._bulb_status_entity_id = bulb_status_entity_id
         self._issue_id = f"light_unreachable_{entry.entry_id}"
         self._cancel_timer: Callable | None = None
         self._unsubscribe: Callable | None = None
+        self._was_on: bool | None = None
+        self._cancel_restore: Callable | None = None
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -79,6 +84,8 @@ class BulbReachabilityWatcher:
             self._unsubscribe()
             self._unsubscribe = None
         self._cancel_pending_timer()
+        self._cancel_pending_restore()
+        self._was_on = None
         ir.async_delete_issue(self._hass, DOMAIN, self._issue_id)
 
     # ------------------------------------------------------------------
@@ -94,13 +101,22 @@ class BulbReachabilityWatcher:
     @callback
     def _on_state_change(self, event: Event) -> None:
         new_state = event.data.get("new_state")
+        old_state = event.data.get("old_state")
         if new_state is None:
             return
         if new_state.state == STATE_UNAVAILABLE:
+            if self._was_on is None:
+                self._capture_bulb_state()
+            self._cancel_pending_restore()
             self._schedule_issue()
         else:
+            was_unavailable = old_state is None or old_state.state == STATE_UNAVAILABLE
             self._cancel_pending_timer()
             ir.async_delete_issue(self._hass, DOMAIN, self._issue_id)
+            if was_unavailable and self._was_on is False:
+                self._schedule_restore_off()
+            else:
+                self._was_on = None
 
     def _schedule_issue(self) -> None:
         if self._cancel_timer is not None:
@@ -124,6 +140,47 @@ class BulbReachabilityWatcher:
         if self._cancel_timer is not None:
             self._cancel_timer()
             self._cancel_timer = None
+
+    def _capture_bulb_state(self) -> None:
+        if not self._bulb_status_entity_id:
+            return
+        state = self._hass.states.get(self._bulb_status_entity_id)
+        if state is not None and state.state not in (STATE_UNAVAILABLE, "unknown"):
+            self._was_on = state.state == "on"
+            _LOGGER.debug(
+                "Captured bulb state for %s before going unreachable: was_on=%s",
+                self._light_entity_id,
+                self._was_on,
+            )
+
+    def _schedule_restore_off(self) -> None:
+        """Schedule turning the light off after it reconnects, since power cycle defaults to on."""
+        if self._cancel_restore is not None:
+            return
+
+        @callback
+        def _restore(_now) -> None:  # noqa: ANN001
+            self._cancel_restore = None
+            self._was_on = None
+            _LOGGER.debug(
+                "Restoring %s to off after power cycle (was off before going unreachable)",
+                self._light_entity_id,
+            )
+            self._hass.async_create_task(
+                self._hass.services.async_call(
+                    "light",
+                    "turn_off",
+                    {"entity_id": self._light_entity_id},
+                    blocking=False,
+                )
+            )
+
+        self._cancel_restore = async_call_later(self._hass, _RESTORE_DELAY_S, _restore)
+
+    def _cancel_pending_restore(self) -> None:
+        if self._cancel_restore is not None:
+            self._cancel_restore()
+            self._cancel_restore = None
 
     def _create_issue(self) -> None:
         ir.async_create_issue(
