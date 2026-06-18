@@ -259,11 +259,11 @@ class PowerCycleRepairFlow(RepairsFlow):
                     "Light %s is already reachable — completing fix flow", light
                 )
                 self._cleanup_wait()
-                return self.async_create_entry(data={})
+                return self.async_show_progress_done(next_step_id="complete")
 
         if self._wait_task and self._wait_task.done():
             self._wait_task = None
-            return self.async_create_entry(data={})
+            return self.async_show_progress_done(next_step_id="complete")
 
         if not self._wait_task:
             self._wait_task = self.hass.async_create_task(
@@ -276,6 +276,11 @@ class PowerCycleRepairFlow(RepairsFlow):
             description_placeholders={"light_name": self._light_name},
             progress_task=self._wait_task,
         )
+
+    async def async_step_complete(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        return self.async_create_entry(data={})
 
     def _cleanup_wait(self) -> None:
         if self._wait_task and not self._wait_task.done():
