@@ -191,14 +191,29 @@ class ShellySmartModeSwitch(SwitchEntity):
             },
             blocking=True,
         )
-        result = await self._shelly_rpc(
-            "ha-watchdog.ForceFallback" if forced else "ha-watchdog.ForceSmart",
-            {},
-        )
+        reachable = await self._restart_watchdog_script()
         self._attr_is_on = not forced
-        # An unreachable device returns None — don't claim availability.
-        self._attr_available = result is not None
+        self._attr_available = reachable
         self.async_write_ha_state()
+
+    async def _restart_watchdog_script(self) -> bool:
+        """Restart ha-watchdog so it picks up the new KVS value immediately."""
+        scripts = await self._shelly_rpc("Script.List", {})
+        if scripts is None:
+            return False
+        script_id = next(
+            (s["id"] for s in scripts.get("scripts", []) if s.get("name") == "ha-watchdog"),
+            None,
+        )
+        if script_id is None:
+            _LOGGER.debug(
+                "ha-watchdog script not found on %s",
+                self._relay_entity_id or self._relay_device_id,
+            )
+            return False
+        await self._shelly_rpc("Script.Stop", {"id": script_id})
+        result = await self._shelly_rpc("Script.Start", {"id": script_id})
+        return result is not None
 
     async def _shelly_rpc(
         self,
