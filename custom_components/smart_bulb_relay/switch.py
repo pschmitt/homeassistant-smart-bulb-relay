@@ -206,7 +206,7 @@ class ShellySmartModeSwitch(SwitchEntity):
             None,
         )
         if script_id is None:
-            _LOGGER.debug(
+            _LOGGER.warning(
                 "ha-watchdog script not found on %s",
                 self._relay_entity_id or self._relay_device_id,
             )
