@@ -6,6 +6,7 @@ from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -39,22 +40,12 @@ async def async_setup_entry(
 
     # Attach our buttons to the existing light device so they show up on its
     # device page alongside the native light entities.
-    device_info: DeviceInfo | None = None
     device = device_info_for_id(hass, entry_light_device_id(hass, entry))
-    if device and device.identifiers:
-        device_info = DeviceInfo(identifiers=device.identifiers)
-
-    # Fallback: create a standalone device for this pairing.
-    if device_info is None:
-        device_info = DeviceInfo(
-            identifiers={(DOMAIN, entry.entry_id)},
-            name=entry.title,
-        )
 
     async_add_entities(
         [
-            PowerCycleButton(entry, relay_entity_id, light_entity_id, device_info),
-            FactoryResetButton(entry, relay_entity_id, light_entity_id, device_info),
+            PowerCycleButton(entry, relay_entity_id, light_entity_id, device),
+            FactoryResetButton(entry, relay_entity_id, light_entity_id, device),
         ]
     )
 
@@ -68,12 +59,22 @@ class _SmartBulbButton(ButtonEntity):
         entry: ConfigEntry,
         relay_entity_id: str,
         light_entity_id: str | None,
-        device_info: DeviceInfo,
+        device: dr.DeviceEntry | None,
     ) -> None:
         self._entry = entry
         self._relay_entity_id = relay_entity_id
         self._light_entity_id = light_entity_id
-        self._attr_device_info = device_info
+        # Link directly to the existing light device instead of copying its
+        # identifiers into DeviceInfo: a device now belongs to a single
+        # config entry and no longer merges across integrations that share
+        # identifiers (HA Core 2026.8, "single config entry per device").
+        if device is not None:
+            self.device_entry = device
+        else:
+            self._attr_device_info = DeviceInfo(
+                identifiers={(DOMAIN, entry.entry_id)},
+                name=entry.title,
+            )
 
 
 class PowerCycleButton(_SmartBulbButton):
@@ -84,9 +85,9 @@ class PowerCycleButton(_SmartBulbButton):
         entry: ConfigEntry,
         relay_entity_id: str,
         light_entity_id: str | None,
-        device_info: DeviceInfo,
+        device: dr.DeviceEntry | None,
     ) -> None:
-        super().__init__(entry, relay_entity_id, light_entity_id, device_info)
+        super().__init__(entry, relay_entity_id, light_entity_id, device)
         self._attr_unique_id = f"{entry.entry_id}_power_cycle"
 
     async def async_press(self) -> None:
@@ -101,9 +102,9 @@ class FactoryResetButton(_SmartBulbButton):
         entry: ConfigEntry,
         relay_entity_id: str,
         light_entity_id: str | None,
-        device_info: DeviceInfo,
+        device: dr.DeviceEntry | None,
     ) -> None:
-        super().__init__(entry, relay_entity_id, light_entity_id, device_info)
+        super().__init__(entry, relay_entity_id, light_entity_id, device)
         self._attr_unique_id = f"{entry.entry_id}_factory_reset"
 
     async def async_press(self) -> None:
