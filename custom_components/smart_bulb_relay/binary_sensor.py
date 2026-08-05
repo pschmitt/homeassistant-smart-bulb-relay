@@ -11,6 +11,7 @@ from homeassistant.components.binary_sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import Event, HomeAssistant, callback
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_state_change_event
@@ -42,16 +43,7 @@ async def async_setup_entry(
         entry.options.get(CONF_POWER_THRESHOLD_W, DEFAULT_POWER_THRESHOLD_W)
     )
 
-    device_info: DeviceInfo | None = None
     device = device_info_for_id(hass, entry_light_device_id(hass, entry))
-    if device and device.identifiers:
-        device_info = DeviceInfo(identifiers=device.identifiers)
-
-    if device_info is None:
-        device_info = DeviceInfo(
-            identifiers={(DOMAIN, entry.entry_id)},
-            name=entry.title,
-        )
 
     async_add_entities(
         [
@@ -59,7 +51,7 @@ async def async_setup_entry(
                 entry=entry,
                 power_sensor_entity_id=power_sensor_entity_id,
                 threshold_w=threshold_w,
-                device_info=device_info,
+                device=device,
             )
         ]
     )
@@ -78,12 +70,22 @@ class BulbStatusBinarySensor(BinarySensorEntity):
         entry: ConfigEntry,
         power_sensor_entity_id: str,
         threshold_w: float,
-        device_info: DeviceInfo,
+        device: dr.DeviceEntry | None,
     ) -> None:
         self._entry = entry
         self._power_sensor_entity_id = power_sensor_entity_id
         self._threshold_w = threshold_w
-        self._attr_device_info = device_info
+        # Link directly to the existing light device instead of copying its
+        # identifiers into DeviceInfo: a device now belongs to a single
+        # config entry and no longer merges across integrations that share
+        # identifiers (HA Core 2026.8, "single config entry per device").
+        if device is not None:
+            self.device_entry = device
+        else:
+            self._attr_device_info = DeviceInfo(
+                identifiers={(DOMAIN, entry.entry_id)},
+                name=entry.title,
+            )
         self._attr_unique_id = f"{entry.entry_id}_bulb_status"
         self._attr_available = False
         self._attr_is_on = None
