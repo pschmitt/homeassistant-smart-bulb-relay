@@ -1,5 +1,4 @@
 {
-  "integration": "mdi:lightbulb-auto",
   "entity": {
     "binary_sensor": {
       "bulb_status": {

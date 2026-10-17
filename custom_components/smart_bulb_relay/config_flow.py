@@ -6,7 +6,6 @@ import logging
 from typing import Any
 
 import voluptuous as vol
-
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
 from homeassistant.core import callback
 from homeassistant.helpers import device_registry as dr
@@ -53,8 +52,15 @@ _LOGGER = logging.getLogger(__name__)
 # Switch name/entity_id must contain one of these for auto-discovery to consider
 # it a light relay (case-insensitive substring match across name + entity_id).
 _RELAY_NAME_KEYWORDS = (
-    "light", "lamp", "ceiling", "bulb", "led", "spot",
-    "licht", "leuchte", "lampe",
+    "light",
+    "lamp",
+    "ceiling",
+    "bulb",
+    "led",
+    "spot",
+    "licht",
+    "leuchte",
+    "lampe",
 )
 
 
@@ -62,9 +68,8 @@ _RELAY_NAME_KEYWORDS = (
 # Discovery helpers
 # ---------------------------------------------------------------------------
 
-def _entity_area_id(
-    entry: er.RegistryEntry, device_reg: dr.DeviceRegistry
-) -> str | None:
+
+def _entity_area_id(entry: er.RegistryEntry, device_reg: dr.DeviceRegistry) -> str | None:
     """Return effective area_id (entity override → device fallback)."""
     if entry.area_id:
         return entry.area_id
@@ -75,9 +80,7 @@ def _entity_area_id(
     return None
 
 
-def _is_supported_light(
-    entry: er.RegistryEntry, device_reg: dr.DeviceRegistry
-) -> bool:
+def _is_supported_light(entry: er.RegistryEntry, device_reg: dr.DeviceRegistry) -> bool:
     """Return True if the light belongs to a supported manufacturer (IKEA/Hue)."""
     if not entry.device_id:
         return False
@@ -92,15 +95,38 @@ _NON_RELAY_TOKENS = frozenset({"ble", "bluetooth"})
 
 # Lights whose names contain these words are secondary/accent fixtures that
 # are almost never wired through a relay (bedside tables, wardrobes, etc.).
-_SECONDARY_LIGHT_TOKENS = frozenset({
-    "bedside", "wardrobe", "couch", "sofa", "nightstand", "closet",
-})
+_SECONDARY_LIGHT_TOKENS = frozenset(
+    {
+        "bedside",
+        "wardrobe",
+        "couch",
+        "sofa",
+        "nightstand",
+        "closet",
+    }
+)
 
 # Words ignored when computing relay↔light name overlap.
-_NAME_STOPWORDS = frozenset({
-    "light", "lights", "lamp", "switch", "shelly", "hue", "ikea",
-    "tradfri", "the", "a", "an", "of", "in", "for", "and", "or",
-})
+_NAME_STOPWORDS = frozenset(
+    {
+        "light",
+        "lights",
+        "lamp",
+        "switch",
+        "shelly",
+        "hue",
+        "ikea",
+        "tradfri",
+        "the",
+        "a",
+        "an",
+        "of",
+        "in",
+        "for",
+        "and",
+        "or",
+    }
+)
 
 
 def _tokenise(text: str) -> set[str]:
@@ -245,7 +271,8 @@ def _discover_candidates(
         relay_words = _relay_meaningful_words(switch)
         if relay_words:
             matched = [
-                lt for lt in area_lights
+                lt
+                for lt in area_lights
                 if relay_words & _meaningful_words(_display_name(lt) + " " + lt.entity_id)
             ]
             area_lights = matched or area_lights  # fallback if nothing overlaps
@@ -275,6 +302,7 @@ def _discover_candidates(
 # Config flow
 # ---------------------------------------------------------------------------
 
+
 class SmartBulbRelayConfigFlow(ConfigFlow, domain=DOMAIN):
     """Config flow for Smart Bulb Relay."""
 
@@ -293,9 +321,7 @@ class SmartBulbRelayConfigFlow(ConfigFlow, domain=DOMAIN):
             if (device_id := entry_relay_device_id(self.hass, e)) is not None
         }
 
-    async def async_step_user(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         if user_input is not None:
             if user_input["setup_type"] == "auto":
                 return await self.async_step_auto_discover()
@@ -374,9 +400,7 @@ class SmartBulbRelayConfigFlow(ConfigFlow, domain=DOMAIN):
             ),
         )
 
-    async def async_step_bulk(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_bulk(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Programmatic entry point used when auto-discover creates multiple pairings at once."""
         if user_input is None:
             return self.async_abort(reason="already_configured")
@@ -385,9 +409,7 @@ class SmartBulbRelayConfigFlow(ConfigFlow, domain=DOMAIN):
             user_input[CONF_LIGHT_DEVICE_ID],
         )
 
-    async def async_step_manual(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_manual(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         if user_input is not None:
             return await self._async_create_entry(
                 user_input[CONF_RELAY_DEVICE_ID],
@@ -446,15 +468,14 @@ class SmartBulbRelayConfigFlow(ConfigFlow, domain=DOMAIN):
 # Options flow — edit an existing pairing
 # ---------------------------------------------------------------------------
 
+
 class SmartBulbRelayOptionsFlow(OptionsFlow):
     """Allow editing a relay/light pairing after initial setup."""
 
     def __init__(self, config_entry: ConfigEntry) -> None:
         self._config_entry = config_entry
 
-    async def async_step_init(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         if user_input is not None:
             return self.async_create_entry(data=user_input)
 
@@ -465,9 +486,7 @@ class SmartBulbRelayOptionsFlow(OptionsFlow):
         current_raise_repairs = self._config_entry.options.get(
             CONF_RAISE_REPAIRS, DEFAULT_RAISE_REPAIRS
         )
-        current_power_sensor = self._config_entry.options.get(
-            CONF_POWER_SENSOR_ENTITY_ID
-        )
+        current_power_sensor = self._config_entry.options.get(CONF_POWER_SENSOR_ENTITY_ID)
         current_threshold = self._config_entry.options.get(
             CONF_POWER_THRESHOLD_W, DEFAULT_POWER_THRESHOLD_W
         )

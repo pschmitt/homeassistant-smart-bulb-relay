@@ -71,7 +71,6 @@
   "issues": {
     "light_unreachable": {
       "title": "{light_name} is unreachable",
-      "description": "**{light_name}** has been unreachable on the Zigbee network for more than 5 minutes. Power cycling the relay may restore connectivity.",
       "fix_flow": {
         "step": {
           "init": {

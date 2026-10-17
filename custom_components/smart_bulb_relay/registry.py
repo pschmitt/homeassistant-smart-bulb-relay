@@ -115,8 +115,10 @@ def discover_power_sensor(
             continue
         if entity_entry.entity_id.split(".", 1)[0] != "sensor":
             continue
-        if entity_entry.device_class == SensorDeviceClass.POWER or \
-                entity_entry.original_device_class == SensorDeviceClass.POWER:
+        if (
+            entity_entry.device_class == SensorDeviceClass.POWER
+            or entity_entry.original_device_class == SensorDeviceClass.POWER
+        ):
             return entity_entry.entity_id
     return None
 

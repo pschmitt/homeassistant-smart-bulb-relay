@@ -32,16 +32,13 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    power_sensor_entity_id = (
-        entry.options.get(CONF_POWER_SENSOR_ENTITY_ID)
-        or entry.data.get(CONF_POWER_SENSOR_ENTITY_ID)
+    power_sensor_entity_id = entry.options.get(CONF_POWER_SENSOR_ENTITY_ID) or entry.data.get(
+        CONF_POWER_SENSOR_ENTITY_ID
     )
     if not power_sensor_entity_id:
         return
 
-    threshold_w = float(
-        entry.options.get(CONF_POWER_THRESHOLD_W, DEFAULT_POWER_THRESHOLD_W)
-    )
+    threshold_w = float(entry.options.get(CONF_POWER_THRESHOLD_W, DEFAULT_POWER_THRESHOLD_W))
 
     device = device_info_for_id(hass, entry_light_device_id(hass, entry))
 

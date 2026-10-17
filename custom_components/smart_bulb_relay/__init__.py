@@ -8,10 +8,8 @@ from homeassistant.helpers import entity_registry as er
 
 from .const import (
     CONF_LIGHT_DEVICE_ID,
-    CONF_LIGHT_ENTITY_ID,
     CONF_RAISE_REPAIRS,
     CONF_RELAY_DEVICE_ID,
-    CONF_RELAY_ENTITY_ID,
     DEFAULT_RAISE_REPAIRS,
     DOMAIN,
 )

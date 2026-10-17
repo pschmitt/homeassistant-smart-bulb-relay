@@ -7,7 +7,6 @@ import logging
 from typing import NamedTuple
 
 import voluptuous as vol
-
 from homeassistant.const import CONF_ENTITY_ID
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.exceptions import ServiceValidationError
@@ -57,9 +56,9 @@ _TARGET_FIELDS = {
 _POWER_CYCLE_SCHEMA = vol.Schema(
     {
         **_TARGET_FIELDS,
-        vol.Optional(
-            CONF_POWER_CYCLE_DELAY, default=DEFAULT_POWER_CYCLE_DELAY
-        ): vol.All(vol.Coerce(float), vol.Range(min=0.1, max=60.0)),
+        vol.Optional(CONF_POWER_CYCLE_DELAY, default=DEFAULT_POWER_CYCLE_DELAY): vol.All(
+            vol.Coerce(float), vol.Range(min=0.1, max=60.0)
+        ),
     },
     extra=vol.ALLOW_EXTRA,
 )
@@ -68,12 +67,8 @@ _FACTORY_RESET_SCHEMA = vol.Schema(
     {
         **_TARGET_FIELDS,
         vol.Optional(CONF_TOGGLE_COUNT): vol.All(vol.Coerce(int), vol.Range(min=1, max=20)),
-        vol.Optional(CONF_OFF_DURATION): vol.All(
-            vol.Coerce(float), vol.Range(min=0.1, max=30.0)
-        ),
-        vol.Optional(CONF_ON_DURATION): vol.All(
-            vol.Coerce(float), vol.Range(min=0.1, max=30.0)
-        ),
+        vol.Optional(CONF_OFF_DURATION): vol.All(vol.Coerce(float), vol.Range(min=0.1, max=30.0)),
+        vol.Optional(CONF_ON_DURATION): vol.All(vol.Coerce(float), vol.Range(min=0.1, max=30.0)),
     },
     extra=vol.ALLOW_EXTRA,
 )
@@ -87,9 +82,9 @@ _TURN_ON_SCHEMA = vol.Schema(
         vol.Optional(CONF_COLOR_TEMP_KELVIN): vol.All(
             vol.Coerce(int), vol.Range(min=1000, max=10000)
         ),
-        vol.Optional(
-            CONF_LIGHT_CONTROL_TIMEOUT, default=DEFAULT_LIGHT_CONTROL_TIMEOUT
-        ): vol.All(vol.Coerce(float), vol.Range(min=0.1, max=30.0)),
+        vol.Optional(CONF_LIGHT_CONTROL_TIMEOUT, default=DEFAULT_LIGHT_CONTROL_TIMEOUT): vol.All(
+            vol.Coerce(float), vol.Range(min=0.1, max=30.0)
+        ),
     },
     extra=vol.ALLOW_EXTRA,
 )
@@ -97,9 +92,9 @@ _TURN_ON_SCHEMA = vol.Schema(
 _TURN_OFF_SCHEMA = vol.Schema(
     {
         **_TARGET_FIELDS,
-        vol.Optional(
-            CONF_LIGHT_CONTROL_TIMEOUT, default=DEFAULT_LIGHT_CONTROL_TIMEOUT
-        ): vol.All(vol.Coerce(float), vol.Range(min=0.1, max=30.0)),
+        vol.Optional(CONF_LIGHT_CONTROL_TIMEOUT, default=DEFAULT_LIGHT_CONTROL_TIMEOUT): vol.All(
+            vol.Coerce(float), vol.Range(min=0.1, max=30.0)
+        ),
     },
     extra=vol.ALLOW_EXTRA,
 )
@@ -108,7 +103,7 @@ _TOGGLE_SCHEMA = _TURN_ON_SCHEMA
 
 # Power-cycling sequences for factory reset, keyed by manufacturer keyword.
 _RESET_SEQUENCES: dict[str, dict] = {
-    "ikea":    {"toggle_count": 6, "off_duration": 2.0, "on_duration": 2.0},
+    "ikea": {"toggle_count": 6, "off_duration": 2.0, "on_duration": 2.0},
     "philips": {"toggle_count": 3, "off_duration": 5.0, "on_duration": 5.0},
     "signify": {"toggle_count": 3, "off_duration": 5.0, "on_duration": 5.0},
 }
@@ -118,6 +113,7 @@ _RESET_SEQUENCE_DEFAULT = {"toggle_count": 6, "off_duration": 2.0, "on_duration"
 # ---------------------------------------------------------------------------
 # Target resolution
 # ---------------------------------------------------------------------------
+
 
 class _RelayTarget(NamedTuple):
     relay: str
@@ -224,6 +220,7 @@ def _require_targets(hass: HomeAssistant, call_data: dict) -> list[_RelayTarget]
 # Manufacturer detection (for factory reset)
 # ---------------------------------------------------------------------------
 
+
 def _reset_sequence_for_light(hass: HomeAssistant, light_entity_id: str) -> dict:
     entity_reg = er.async_get(hass)
     entry = entity_reg.async_get(light_entity_id)
@@ -243,6 +240,7 @@ def _reset_sequence_for_light(hass: HomeAssistant, light_entity_id: str) -> dict
 # ---------------------------------------------------------------------------
 # State helpers
 # ---------------------------------------------------------------------------
+
 
 def _is_available(hass: HomeAssistant, entity_id: str) -> bool:
     state = hass.states.get(entity_id)
@@ -272,7 +270,7 @@ async def _wait_for_state(
     unsub = async_track_state_change_event(hass, [entity_id], _listener)
     try:
         return await asyncio.wait_for(done, timeout=timeout)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         return False
     finally:
         unsub()
@@ -284,9 +282,8 @@ async def _wait_for_state(
 # Low-level relay operations
 # ---------------------------------------------------------------------------
 
-async def _do_power_cycle(
-    hass: HomeAssistant, relay_entity_id: str, delay: float
-) -> None:
+
+async def _do_power_cycle(hass: HomeAssistant, relay_entity_id: str, delay: float) -> None:
     _LOGGER.debug("Power-cycling %s (off for %.1f s)", relay_entity_id, delay)
     await hass.services.async_call(
         "switch", "turn_off", {"entity_id": relay_entity_id}, blocking=True
@@ -306,7 +303,10 @@ async def _do_factory_reset(
 ) -> None:
     _LOGGER.debug(
         "Factory reset on %s: %d toggles (off %.1fs / on %.1fs)",
-        relay_entity_id, toggle_count, off_duration, on_duration,
+        relay_entity_id,
+        toggle_count,
+        off_duration,
+        on_duration,
     )
     await hass.services.async_call(
         "switch", "turn_on", {"entity_id": relay_entity_id}, blocking=True
@@ -327,6 +327,7 @@ async def _do_factory_reset(
 # ---------------------------------------------------------------------------
 # Smart light control (relay + light, with fallback logic)
 # ---------------------------------------------------------------------------
+
 
 async def _do_turn_on(
     hass: HomeAssistant,
@@ -459,7 +460,9 @@ async def async_register_services(hass: HomeAssistant) -> None:
         color_temp_kelvin: int | None = call.data.get(CONF_COLOR_TEMP_KELVIN)
         timeout: float = call.data.get(CONF_LIGHT_CONTROL_TIMEOUT, DEFAULT_LIGHT_CONTROL_TIMEOUT)
         for t in _require_targets(hass, call.data):
-            await _do_turn_on(hass, t.relay, t.light_entity_id, brightness_pct, color_temp_kelvin, timeout)
+            await _do_turn_on(
+                hass, t.relay, t.light_entity_id, brightness_pct, color_temp_kelvin, timeout
+            )
 
     async def _handle_turn_off(call: ServiceCall) -> None:
         timeout: float = call.data.get(CONF_LIGHT_CONTROL_TIMEOUT, DEFAULT_LIGHT_CONTROL_TIMEOUT)
@@ -471,7 +474,9 @@ async def async_register_services(hass: HomeAssistant) -> None:
         color_temp_kelvin: int | None = call.data.get(CONF_COLOR_TEMP_KELVIN)
         timeout: float = call.data.get(CONF_LIGHT_CONTROL_TIMEOUT, DEFAULT_LIGHT_CONTROL_TIMEOUT)
         for t in _require_targets(hass, call.data):
-            await _do_toggle(hass, t.relay, t.light_entity_id, brightness_pct, color_temp_kelvin, timeout)
+            await _do_toggle(
+                hass, t.relay, t.light_entity_id, brightness_pct, color_temp_kelvin, timeout
+            )
 
     def _smart_mode_entities() -> list[str]:
         entity_reg = er.async_get(hass)
@@ -489,9 +494,7 @@ async def async_register_services(hass: HomeAssistant) -> None:
             _LOGGER.warning("make_all_dumb: no smart-mode switch entities found")
             return
         _LOGGER.debug("make_all_dumb: turning off %s", entities)
-        await hass.services.async_call(
-            "switch", "turn_off", {"entity_id": entities}, blocking=True
-        )
+        await hass.services.async_call("switch", "turn_off", {"entity_id": entities}, blocking=True)
 
     async def _handle_make_all_smart(_call: ServiceCall) -> None:
         entities = _smart_mode_entities()
@@ -499,17 +502,25 @@ async def async_register_services(hass: HomeAssistant) -> None:
             _LOGGER.warning("make_all_smart: no smart-mode switch entities found")
             return
         _LOGGER.debug("make_all_smart: turning on %s", entities)
-        await hass.services.async_call(
-            "switch", "turn_on", {"entity_id": entities}, blocking=True
-        )
+        await hass.services.async_call("switch", "turn_on", {"entity_id": entities}, blocking=True)
 
-    hass.services.async_register(DOMAIN, SERVICE_POWER_CYCLE,    _handle_power_cycle,    schema=_POWER_CYCLE_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_FACTORY_RESET,  _handle_factory_reset,  schema=_FACTORY_RESET_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_TURN_ON,        _handle_turn_on,        schema=_TURN_ON_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_TURN_OFF,       _handle_turn_off,       schema=_TURN_OFF_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_TOGGLE,         _handle_toggle,         schema=_TOGGLE_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_MAKE_ALL_DUMB,  _handle_make_all_dumb,  schema=vol.Schema({}))
-    hass.services.async_register(DOMAIN, SERVICE_MAKE_ALL_SMART, _handle_make_all_smart, schema=vol.Schema({}))
+    hass.services.async_register(
+        DOMAIN, SERVICE_POWER_CYCLE, _handle_power_cycle, schema=_POWER_CYCLE_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_FACTORY_RESET, _handle_factory_reset, schema=_FACTORY_RESET_SCHEMA
+    )
+    hass.services.async_register(DOMAIN, SERVICE_TURN_ON, _handle_turn_on, schema=_TURN_ON_SCHEMA)
+    hass.services.async_register(
+        DOMAIN, SERVICE_TURN_OFF, _handle_turn_off, schema=_TURN_OFF_SCHEMA
+    )
+    hass.services.async_register(DOMAIN, SERVICE_TOGGLE, _handle_toggle, schema=_TOGGLE_SCHEMA)
+    hass.services.async_register(
+        DOMAIN, SERVICE_MAKE_ALL_DUMB, _handle_make_all_dumb, schema=vol.Schema({})
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_MAKE_ALL_SMART, _handle_make_all_smart, schema=vol.Schema({})
+    )
 
 
 def async_unregister_services(hass: HomeAssistant) -> None:

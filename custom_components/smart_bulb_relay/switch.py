@@ -8,13 +8,12 @@ from datetime import timedelta
 from typing import Any
 
 from aiohttp import ClientError, ClientTimeout
-
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import slugify
 
@@ -139,7 +138,9 @@ class ShellySmartModeSwitch(SwitchEntity):
         # config entry and no longer merges across integrations that share
         # identifiers (HA Core 2026.8, "single config entry per device").
         self.device_entry = shelly_device
-        self.entity_id = f"switch.{slugify(shelly_device.name_by_user or shelly_device.name)}_smart_mode"
+        self.entity_id = (
+            f"switch.{slugify(shelly_device.name_by_user or shelly_device.name)}_smart_mode"
+        )
         self._attr_extra_state_attributes = {
             "relay_device_id": relay_device_id,
             "relay_entity_id": relay_entity_id,

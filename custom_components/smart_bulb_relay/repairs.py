@@ -10,7 +10,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from homeassistant.components.repairs import RepairsFlow
 from homeassistant.config_entries import ConfigEntry
@@ -76,9 +77,7 @@ class BulbReachabilityWatcher:
                 self._check_current_state()
 
             self._entry.async_on_unload(
-                self._hass.bus.async_listen_once(
-                    EVENT_HOMEASSISTANT_STARTED, _on_ha_started
-                )
+                self._hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _on_ha_started)
             )
 
     def stop(self) -> None:
@@ -135,9 +134,7 @@ class BulbReachabilityWatcher:
             )
             self._create_issue()
 
-        self._cancel_timer = async_call_later(
-            self._hass, _UNREACHABLE_DELAY_S, _raise
-        )
+        self._cancel_timer = async_call_later(self._hass, _UNREACHABLE_DELAY_S, _raise)
 
     def _cancel_pending_timer(self) -> None:
         if self._cancel_timer is not None:
@@ -201,6 +198,7 @@ class BulbReachabilityWatcher:
 # Fix flow
 # ---------------------------------------------------------------------------
 
+
 async def async_create_fix_flow(
     hass: HomeAssistant,
     issue_id: str,
@@ -208,7 +206,7 @@ async def async_create_fix_flow(
 ) -> RepairsFlow:
     """Return the appropriate repair flow for the given issue."""
     if issue_id.startswith(_ISSUE_PREFIX):
-        entry_id = issue_id[len(_ISSUE_PREFIX) + 1:]  # strip "light_unreachable_"
+        entry_id = issue_id[len(_ISSUE_PREFIX) + 1 :]  # strip "light_unreachable_"
         return PowerCycleRepairFlow(entry_id)
     raise ValueError(f"Unknown issue_id: {issue_id}")
 
@@ -229,9 +227,7 @@ class PowerCycleRepairFlow(RepairsFlow):
     def _light_entity_id(self) -> str | None:
         return self.hass.data.get(DOMAIN, {}).get(self._entry_id, {}).get("light")
 
-    async def async_step_init(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         if user_input is not None:
             light = self._light_entity_id
             if light:
@@ -255,9 +251,7 @@ class PowerCycleRepairFlow(RepairsFlow):
         if light:
             state = self.hass.states.get(light)
             if state and state.state != STATE_UNAVAILABLE:
-                _LOGGER.debug(
-                    "Light %s is already reachable — completing fix flow", light
-                )
+                _LOGGER.debug("Light %s is already reachable — completing fix flow", light)
                 self._cleanup_wait()
                 return self.async_show_progress_done(next_step_id="complete")
 
@@ -266,9 +260,7 @@ class PowerCycleRepairFlow(RepairsFlow):
             return self.async_show_progress_done(next_step_id="complete")
 
         if not self._wait_task:
-            self._wait_task = self.hass.async_create_task(
-                self._wait_for_reconnect()
-            )
+            self._wait_task = self.hass.async_create_task(self._wait_for_reconnect())
 
         return self.async_show_progress(
             step_id="wait_reconnect",
@@ -277,9 +269,7 @@ class PowerCycleRepairFlow(RepairsFlow):
             progress_task=self._wait_task,
         )
 
-    async def async_step_complete(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_complete(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         return self.async_create_entry(data={})
 
     def _cleanup_wait(self) -> None:
@@ -313,8 +303,6 @@ class PowerCycleRepairFlow(RepairsFlow):
             async with asyncio.timeout(_RECONNECT_TIMEOUT_S):
                 await back.wait()
         except TimeoutError:
-            _LOGGER.warning(
-                "Timed out waiting for %s to reconnect after power cycle", light
-            )
+            _LOGGER.warning("Timed out waiting for %s to reconnect after power cycle", light)
         finally:
             unsub()
