@@ -88,7 +88,6 @@ class BulbReachabilityWatcher:
         self._cancel_pending_timer()
         self._cancel_pending_restore()
         self._was_on = None
-        ir.async_delete_issue(self._hass, DOMAIN, self._issue_id)
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -99,6 +98,9 @@ class BulbReachabilityWatcher:
         state = self._hass.states.get(self._light_entity_id)
         if state and state.state == STATE_UNAVAILABLE:
             self._schedule_issue()
+        elif state:
+            self._cancel_pending_timer()
+            ir.async_delete_issue(self._hass, DOMAIN, self._issue_id)
 
     @callback
     def _on_state_change(self, event: Event) -> None:
@@ -212,10 +214,11 @@ async def async_create_fix_flow(
 
 
 class PowerCycleRepairFlow(RepairsFlow):
-    """Two-step repair flow: confirm → wait for the bulb to reconnect."""
+    """Repair flow: confirm → power-cycle the relay → wait for bulb reconnect."""
 
     def __init__(self, entry_id: str) -> None:
         self._entry_id = entry_id
+        self._power_cycle_task: asyncio.Task | None = None
         self._wait_task: asyncio.Task | None = None
 
     @property
@@ -227,21 +230,48 @@ class PowerCycleRepairFlow(RepairsFlow):
     def _light_entity_id(self) -> str | None:
         return self.hass.data.get(DOMAIN, {}).get(self._entry_id, {}).get("light")
 
+    @property
+    def _relay_entity_id(self) -> str | None:
+        return self.hass.data.get(DOMAIN, {}).get(self._entry_id, {}).get("relay")
+
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         if user_input is not None:
-            light = self._light_entity_id
-            if light:
-                await self.hass.services.async_call(
+            relay = self._relay_entity_id
+            if not relay:
+                _LOGGER.error("No relay found for repair issue %s", self._entry_id)
+                return self.async_abort(reason="relay_unavailable")
+
+            self._power_cycle_task = self.hass.async_create_task(
+                self.hass.services.async_call(
                     DOMAIN,
                     SERVICE_POWER_CYCLE,
-                    {"entity_id": light},
-                    blocking=False,
+                    {"entity_id": relay},
+                    blocking=True,
                 )
-            return await self.async_step_wait_reconnect()
+            )
+            return await self.async_step_power_cycle()
 
         return self.async_show_form(
             step_id="init",
             description_placeholders={"light_name": self._light_name},
+        )
+
+    async def async_step_power_cycle(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        if self._power_cycle_task and self._power_cycle_task.done():
+            self._power_cycle_task.result()
+            self._power_cycle_task = None
+            return self.async_show_progress_done(next_step_id="wait_reconnect")
+
+        if not self._power_cycle_task:
+            return await self.async_step_wait_reconnect()
+
+        return self.async_show_progress(
+            step_id="power_cycle",
+            progress_action="power_cycle",
+            description_placeholders={"light_name": self._light_name},
+            progress_task=self._power_cycle_task,
         )
 
     async def async_step_wait_reconnect(
@@ -273,6 +303,9 @@ class PowerCycleRepairFlow(RepairsFlow):
         return self.async_create_entry(data={})
 
     def _cleanup_wait(self) -> None:
+        if self._power_cycle_task and not self._power_cycle_task.done():
+            self._power_cycle_task.cancel()
+        self._power_cycle_task = None
         if self._wait_task and not self._wait_task.done():
             self._wait_task.cancel()
         self._wait_task = None

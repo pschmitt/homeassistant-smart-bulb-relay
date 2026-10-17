@@ -5,6 +5,7 @@ from __future__ import annotations
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import issue_registry as ir
 
 from .const import (
     CONF_LIGHT_DEVICE_ID,
@@ -53,6 +54,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
         entry_data["watcher"] = watcher
         watcher.start()
+    else:
+        ir.async_delete_issue(hass, DOMAIN, f"light_unreachable_{entry.entry_id}")
 
     return True
 
@@ -68,6 +71,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data[DOMAIN].pop(entry.entry_id, None)
         async_unregister_services(hass)
     return unload_ok
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Remove any repair issue when its pairing is deleted."""
+    ir.async_delete_issue(hass, DOMAIN, f"light_unreachable_{entry.entry_id}")
 
 
 async def _async_reload_on_options_change(hass: HomeAssistant, entry: ConfigEntry) -> None:

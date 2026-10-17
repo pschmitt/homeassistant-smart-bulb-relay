@@ -19,6 +19,7 @@ from .const import (
     CONF_BRIGHTNESS_PCT,
     CONF_COLOR_TEMP_KELVIN,
     CONF_LIGHT_CONTROL_TIMEOUT,
+    CONF_LIGHT_ENTITY_ID,
     CONF_POWER_CYCLE_DELAY,
     DEFAULT_BRIGHTNESS_PCT,
     DEFAULT_LIGHT_CONTROL_TIMEOUT,
@@ -34,6 +35,7 @@ from .const import (
 )
 from .registry import (
     device_id_for_entity,
+    effective_entry_value,
     entry_light_device_id,
     entry_relay_device_id,
     resolve_device_entity,
@@ -126,10 +128,16 @@ def _relay_for_light(hass: HomeAssistant, light_entity_id: str) -> str | None:
         configured_light_device = entry_light_device_id(hass, entry)
         if configured_light_device and configured_light_device == light_device_id:
             return resolve_relay_entity(hass, entry)
-        if not configured_light_device:
-            data = hass.data.get(DOMAIN, {}).get(entry.entry_id, {})
-            if isinstance(data, dict) and data.get("light") == light_entity_id:
-                return data["relay"]
+
+        # Device registry IDs can change while the configured entity pairing
+        # remains valid. Prefer the resolved entity stored at setup, then fall
+        # back to the explicitly configured entity ID for legacy entries.
+        data = hass.data.get(DOMAIN, {}).get(entry.entry_id, {})
+        configured_light_entity = effective_entry_value(entry, CONF_LIGHT_ENTITY_ID)
+        if isinstance(data, dict) and (
+            data.get("light") == light_entity_id or configured_light_entity == light_entity_id
+        ):
+            return data.get("relay") or resolve_relay_entity(hass, entry)
     return None
 
 

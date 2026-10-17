@@ -72,6 +72,13 @@
     "light_unreachable": {
       "title": "{light_name} is unreachable",
       "fix_flow": {
+        "abort": {
+          "relay_unavailable": "The paired relay could not be found. Check the Smart Bulb Relay pairing and try again."
+        },
+        "progress": {
+          "power_cycle": "Power-cycling the relay to restart the bulb…",
+          "wait_reconnect": "Relay power-cycled. Waiting for the bulb to reconnect to Zigbee…"
+        },
         "step": {
           "init": {
             "title": "Power cycle {light_name}",
