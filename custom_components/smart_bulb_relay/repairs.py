@@ -256,9 +256,7 @@ class PowerCycleRepairFlow(RepairsFlow):
             description_placeholders={"light_name": self._light_name},
         )
 
-    async def async_step_power_cycle(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_power_cycle(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         if self._power_cycle_task and self._power_cycle_task.done():
             self._power_cycle_task.result()
             self._power_cycle_task = None
