@@ -30,7 +30,7 @@ from .registry import (
     resolve_relay_entity,
 )
 
-SCAN_INTERVAL = timedelta(seconds=60)
+SCAN_INTERVAL = timedelta(seconds=15)
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -79,7 +79,7 @@ async def async_setup_entry(
                 shelly_entry=shelly_entry,
             )
         ],
-        update_before_add=True,
+        update_before_add=False,
     )
 
 
@@ -175,6 +175,38 @@ class ShellySmartModeSwitch(SwitchEntity):
         forced_fallback = value.get("value") == "true"
         self._attr_is_on = not forced_fallback
         self._attr_available = True
+        status = await self._watchdog_status()
+        self._attr_extra_state_attributes.update(status)
+
+    async def _watchdog_status(self) -> dict:
+        """Read transient status from the running script; never trust persisted mode."""
+        unavailable = {"watchdog_mode": "error", "watchdog_channels": [], "heartbeat_age": None}
+        scripts = await self._shelly_rpc("Script.List", {})
+        if not scripts:
+            return unavailable
+        script = next(
+            (s for s in scripts.get("scripts", []) if s.get("name") == "ha-watchdog"), None
+        )
+        if not script or not script.get("running"):
+            return unavailable
+        result = await self._shelly_rpc(
+            "Script.Eval",
+            {
+                "id": script["id"],
+                "code": 'typeof watchdogStatus === "function" ? JSON.stringify(watchdogStatus()) : "null"',
+            },
+        )
+        try:
+            status = json.loads((result or {}).get("result", "null"))
+        except (ValueError, TypeError):
+            return unavailable
+        if not isinstance(status, dict) or status.get("version") != 2:
+            return unavailable
+        return {
+            "watchdog_mode": status.get("mode", "error"),
+            "watchdog_channels": status.get("channels", []),
+            "heartbeat_age": status.get("heartbeat_age"),
+        }
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Clear forced fallback so the watchdog may use detached input mode."""
@@ -195,29 +227,12 @@ class ShellySmartModeSwitch(SwitchEntity):
             },
             blocking=True,
         )
-        reachable = await self._restart_watchdog_script()
+        # The watchdog polls KVS every second. Do not restart it and discard
+        # its heartbeat lease on every manual mode change.
         self._attr_is_on = not forced
-        self._attr_available = reachable
+        self._attr_extra_state_attributes["watchdog_mode"] = "starting"
         self.async_write_ha_state()
-
-    async def _restart_watchdog_script(self) -> bool:
-        """Restart ha-watchdog so it picks up the new KVS value immediately."""
-        scripts = await self._shelly_rpc("Script.List", {})
-        if scripts is None:
-            return False
-        script_id = next(
-            (s["id"] for s in scripts.get("scripts", []) if s.get("name") == "ha-watchdog"),
-            None,
-        )
-        if script_id is None:
-            _LOGGER.warning(
-                "ha-watchdog script not found on %s",
-                self._relay_entity_id or self._relay_device_id,
-            )
-            return False
-        await self._shelly_rpc("Script.Stop", {"id": script_id})
-        result = await self._shelly_rpc("Script.Start", {"id": script_id})
-        return result is not None
+        self.async_schedule_update_ha_state(force_refresh=True)
 
     async def _shelly_rpc(
         self,
@@ -229,7 +244,7 @@ class ShellySmartModeSwitch(SwitchEntity):
             return None
 
         session = async_get_clientsession(self.hass)
-        timeout = ClientTimeout(total=10)
+        timeout = ClientTimeout(total=2)
         try:
             async with session.post(
                 f"http://{host}/rpc/{method}",
@@ -240,6 +255,9 @@ class ShellySmartModeSwitch(SwitchEntity):
                     data = await response.json(content_type=None)
                 except json.JSONDecodeError:
                     data = {}
+
+                if not isinstance(data, dict):
+                    return None
 
                 if response.status >= 400 and data.get("code") == -105:
                     return data
@@ -252,7 +270,9 @@ class ShellySmartModeSwitch(SwitchEntity):
                         response.status,
                     )
                     return None
-                return data if isinstance(data, dict) else {}
+                if "code" in data and data.get("code") != -105:
+                    return None
+                return data
         except (ClientError, TimeoutError) as err:
             _LOGGER.debug(
                 "Shelly RPC %s failed for %s: %s",

@@ -2,10 +2,17 @@
 
 from __future__ import annotations
 
+import logging
+from datetime import timedelta
+
+from homeassistant.components import mqtt
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
+from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.util import dt as dt_util
 
 from .const import (
     CONF_LIGHT_DEVICE_ID,
@@ -24,6 +31,41 @@ from .repairs import BulbReachabilityWatcher
 from .services import async_register_services, async_unregister_services
 
 PLATFORMS = ["binary_sensor", "button", "switch"]
+
+
+_LOGGER = logging.getLogger(__name__)
+HEARTBEAT_TOPIC = "homeassistant/shelly-watchdog/heartbeat"
+
+
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+    """Send live, non-retained leases only after HA has finished starting."""
+
+    async def publish_heartbeat(_now) -> None:
+        if not hass.is_running or not mqtt.is_connected(hass):
+            return
+        try:
+            await mqtt.async_publish(
+                hass,
+                HEARTBEAT_TOPIC,
+                str(int(dt_util.utcnow().timestamp())),
+                qos=0,
+                retain=False,
+            )
+        except Exception:  # Keep the timer alive when MQTT disconnects mid-publish.
+            _LOGGER.debug("Unable to publish Shelly heartbeat", exc_info=True)
+
+    cancel = async_track_time_interval(hass, publish_heartbeat, timedelta(seconds=5))
+
+    async def stop_heartbeat(_event) -> None:
+        cancel()
+        if mqtt.is_connected(hass):
+            try:
+                await mqtt.async_publish(hass, HEARTBEAT_TOPIC, "offline", qos=0, retain=False)
+            except Exception:
+                _LOGGER.debug("Unable to publish Shelly shutdown", exc_info=True)
+
+    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, stop_heartbeat)
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

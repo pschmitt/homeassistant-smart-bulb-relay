@@ -19,6 +19,8 @@ When a smart bulb is wired through a Shelly relay, the relay must stay on for th
 
 - **Auto-discovery** — scans your HA instance for Shelly switches and supported bulbs in the same area, matches them by name, and proposes pairings
 - **Power cycle & factory reset** — one-click buttons on the light's device page; factory reset sequence auto-detected per manufacturer (IKEA: 6 × 2 s, Hue/Philips: 3 × 5 s)
+- **HA heartbeat** — sends a fresh MQTT lease every 5 seconds after HA startup; watchdog v2 falls back locally after 20 seconds without a heartbeat and requires 15 seconds of fresh heartbeats to recover
+- **Watchdog diagnostics** — smart-mode switch attributes report actual watchdog mode, heartbeat age, and channel input modes from the running script
 - **Smart mode toggle** — exposes the Shelly `ha-watchdog` KVS flag as a switch; works alongside the [Shelly Detached Input blueprint](https://github.com/pschmitt/home-assistant-blueprints)
 - **Smart Bulb Status sensor** — a `binary_sensor` backed by the relay's power sensor; tells you whether the bulb is drawing load regardless of its Zigbee availability
 - **Smart turn on/off/toggle services** — prefer the light entity, fall back to the relay, power-cycle if the relay is already on but the bulb is unresponsive
@@ -71,3 +73,18 @@ This integration works best with the companion [Shelly Detached Input](https://g
 ## License
 
 [GNU General Public License v3.0](LICENSE)
+
+## Shelly watchdog v2
+
+MQTT must be configured in HA and on the Shellys. The integration publishes
+non-retained heartbeats to `homeassistant/shelly-watchdog/heartbeat`, and sends
+`offline` on shutdown. The manual Smart Mode switch still expresses the requested
+mode. Its `watchdog_mode` attribute reports the actual device mode independently:
+`starting`, `smart`, `fallback`, `forced`, or `error`.
+
+Use the companion blueprint's **Watchdog input event topic** with
+`<Shelly MQTT topic_prefix>/ha-watchdog/input/<channel>`. This selects device-owned
+input events and disables the legacy state trigger, so HA does not compete with
+native relay control during automatic fallback. Only the Ansible-managed v2
+`ha-watchdog` script supplies these events. Both mode handovers preserve relay
+power state; an unpowered bulb is restored on the next deliberate press.
