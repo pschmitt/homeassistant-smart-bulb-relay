@@ -5,14 +5,14 @@
     "@pschmitt"
   ],
   "config_flow": true,
+  "dependencies": [
+    "mqtt"
+  ],
   "documentation": "https://github.com/pschmitt/homeassistant-smart-bulb-relay",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/pschmitt/homeassistant-smart-bulb-relay/issues",
   "loggers": [
     "custom_components.smart_bulb_relay"
   ],
-  "version": "0.2.0",
-  "dependencies": [
-    "mqtt"
-  ]
+  "version": "0.2.0"
 }
