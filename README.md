@@ -76,6 +76,10 @@ This integration works best with the companion [Shelly Detached Input](https://g
 
 ## Shelly watchdog v2
 
+Read the [architecture and operations guide](docs/shelly-watchdog.md) for the
+input ownership rules, timing choices, bulb recovery, message contract, and
+troubleshooting.
+
 MQTT must be configured in HA and on the Shellys. The integration publishes
 non-retained heartbeats to `homeassistant/shelly-watchdog/heartbeat`, and sends
 `offline` on shutdown. The manual Smart Mode switch still expresses the requested
