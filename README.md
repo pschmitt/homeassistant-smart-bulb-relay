@@ -1,104 +1,45 @@
-# Smart Bulb Relay
+<p align="center">
+  <img src="custom_components/smart_bulb_relay/icon.png" width="96" alt="Smart Bulb Relay icon">
+</p>
 
-A Home Assistant custom integration that pairs a **Shelly relay switch** with a **smart bulb** (IKEA Tradfri, Philips Hue) to give you the best of both worlds: a physical wall switch that always works, plus full smart-bulb control.
+<p align="center">
+  <a href="https://my.home-assistant.io/redirect/marketplace_repository/?owner=pschmitt&amp;repository=homeassistant-smart-bulb-relay&amp;category=integration"><img src="https://my.home-assistant.io/badges/marketplace_repository.svg" alt="Open this integration in Home Assistant Marketplace"></a>
+</p>
 
-![Smart Bulb Relay](custom_components/smart_bulb_relay/icon.png)
+<h1 align="center">Smart Bulb Relay</h1>
 
-## What it does
-
-When a smart bulb is wired through a Shelly relay, the relay must stay on for the bulb to be reachable over Zigbee/Matter. This integration manages that relationship and exposes unified services and entities:
-
-| Entity | Device | Description |
-|--------|--------|-------------|
-| `button.*_power_cycle` | Light | Power-cycles the relay (off → on) to wake an unresponsive bulb |
-| `button.*_factory_reset` | Light | Triggers a factory reset via the manufacturer's toggle sequence |
-| `switch.*_smart_mode` | Relay | When on: Shelly watchdog uses detached-input mode. When off: relay acts as a plain wall switch |
-| `binary_sensor.*_bulb_status` | Light | `on` when the circuit draws more than the configured wattage threshold |
+<p align="center">Pair a Shelly wall-switch relay with a smart bulb and keep local control when Home Assistant is unavailable.</p>
 
 ## Features
 
-- **Auto-discovery** — scans your HA instance for Shelly switches and supported bulbs in the same area, matches them by name, and proposes pairings
-- **Power cycle & factory reset** — one-click buttons on the light's device page; factory reset sequence auto-detected per manufacturer (IKEA: 6 × 2 s, Hue/Philips: 3 × 5 s)
-- **HA heartbeat** — sends a fresh MQTT lease every 5 seconds after HA startup; watchdog v2 falls back locally after 20 seconds without a heartbeat and requires 15 seconds of fresh heartbeats to recover
-- **Watchdog diagnostics** — smart-mode switch attributes report actual watchdog mode, heartbeat age, and channel input modes from the running script
-- **Smart mode toggle** — exposes the Shelly `ha-watchdog` KVS flag as a switch; works alongside the [Shelly Detached Input blueprint](https://github.com/pschmitt/home-assistant-blueprints)
-- **Smart Bulb Status sensor** — a `binary_sensor` backed by the relay's power sensor; tells you whether the bulb is drawing load regardless of its Zigbee availability
-- **Smart turn on/off/toggle services** — prefer the light entity, fall back to the relay, power-cycle if the relay is already on but the bulb is unresponsive
+- **Pairing:** Discover or manually pair a Shelly relay with an IKEA or Hue bulb. See [Pairing and controls](docs/configuration.md).
+- **Bulb recovery:** Offer power-cycle and manufacturer-specific factory-reset buttons.
+- **Smart controls:** Use the light when available and fall back to the relay; estimate bulb status from power draw.
+- **Local fallback:** Send MQTT heartbeats to a Shelly watchdog that returns input control to the device during outages. See [Shelly watchdog](docs/shelly-watchdog.md).
 
-## Supported bulbs
+## Install
 
-Auto-discovery matches bulbs from these manufacturers (case-insensitive substring match on the device manufacturer field):
+Use the Marketplace badge above on Home Assistant 2026.11 or later to add this
+repository as a custom integration. On older versions, add it as a HACS
+custom repository of type **Integration**. Install and restart Home Assistant.
+The badge does not imply a public catalog listing. For manual installation,
+copy `custom_components/smart_bulb_relay/` into Home Assistant's
+`custom_components/` directory and restart.
 
-- IKEA (Tradfri)
-- Philips / Signify (Hue)
+## Quick start
 
-## Installation
+1. Add **Smart Bulb Relay** under **Settings → Devices & services → Add integration**.
+2. Choose auto-discovery or manually pair a Shelly relay and smart bulb.
+3. Set up the companion [Shelly Detached Input blueprint](https://github.com/pschmitt/home-assistant-blueprints) for wall-switch control.
+4. Configure MQTT on Home Assistant and the Shelly to use watchdog fallback.
 
-### Home Assistant 2026.11 and newer
+## Documentation
 
-[![Open this integration in Home Assistant Marketplace](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=pschmitt&repository=homeassistant-smart-bulb-relay&category=integration)
-
-Click the badge to add the repository, then install the integration. Restart
-Home Assistant and add it from **Settings → Devices & services**.
-
-### HACS (older installations)
-
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=pschmitt&repository=homeassistant-smart-bulb-relay&category=integration)
-
-For Home Assistant versions before 2026.11, open HACS and add
-`https://github.com/pschmitt/homeassistant-smart-bulb-relay` as a custom
-repository of type **Integration**.
-
-1. Install **Smart Bulb Relay**.
-2. Restart Home Assistant.
-
-### Manual
-
-```bash
-cp -r custom_components/smart_bulb_relay \
-  /config/custom_components/smart_bulb_relay
-```
-
-Restart Home Assistant.
-
-## Configuration
-
-Go to **Settings → Integrations → Add integration → Smart Bulb Relay**.
-
-- **Auto-discover** — lets the integration find and propose all relay↔bulb pairings automatically.
-- **Manual** — pick the Shelly device and the smart bulb device individually.
-
-Each pairing creates its own config entry (one per relay/bulb pair). You can edit a pairing via the integration's **Configure** button to adjust:
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| Smart mode switch | enabled | Create the Smart Mode switch entity |
-| Power sensor | auto-discovered | Sensor used to back the Smart Bulb Status binary sensor |
-| Load threshold | 1 W | Wattage above which the Smart Bulb Status reports `on` |
-
-## Blueprint
-
-This integration works best with the companion [Shelly Detached Input](https://github.com/pschmitt/home-assistant-blueprints) blueprint, which handles wall-switch presses and uses both the Smart Mode switch and the Smart Bulb Status sensor to drive robust on/off/toggle logic.
+| Topic | Description |
+|-------|-------------|
+| [Pairing and controls](docs/configuration.md) | Pairing choices, entities and settings |
+| [Shelly watchdog](docs/shelly-watchdog.md) | Input ownership, heartbeat, fallback and troubleshooting |
 
 ## License
 
-[GNU General Public License v3.0](LICENSE)
-
-## Shelly watchdog v2
-
-Read the [architecture and operations guide](docs/shelly-watchdog.md) for the
-input ownership rules, timing choices, bulb recovery, message contract, and
-troubleshooting.
-
-MQTT must be configured in HA and on the Shellys. The integration publishes
-non-retained heartbeats to `homeassistant/shelly-watchdog/heartbeat`, and sends
-`offline` on shutdown. The manual Smart Mode switch still expresses the requested
-mode. Its `watchdog_mode` attribute reports the actual device mode independently:
-`starting`, `smart`, `fallback`, `forced`, or `error`.
-
-Use the companion blueprint's **Watchdog input event topic** with
-`<Shelly MQTT topic_prefix>/ha-watchdog/input/<channel>`. This selects device-owned
-input events and disables the legacy state trigger, so HA does not compete with
-native relay control during automatic fallback. Only the Ansible-managed v2
-`ha-watchdog` script supplies these events. Both mode handovers preserve relay
-power state; an unpowered bulb is restored on the next deliberate press.
+[GPL-3.0](LICENSE).
