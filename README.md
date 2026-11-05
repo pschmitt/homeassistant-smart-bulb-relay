@@ -34,13 +34,23 @@ Auto-discovery matches bulbs from these manufacturers (case-insensitive substrin
 
 ## Installation
 
-### HACS (recommended)
+### Home Assistant 2026.11 and newer
+
+[![Open this integration in Home Assistant Marketplace](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=pschmitt&repository=homeassistant-smart-bulb-relay&category=integration)
+
+Click the badge to add the repository, then install the integration. Restart
+Home Assistant and add it from **Settings → Devices & services**.
+
+### HACS (older installations)
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=pschmitt&repository=homeassistant-smart-bulb-relay&category=integration)
 
-1. Click the badge above, or open HACS and add `https://github.com/pschmitt/homeassistant-smart-bulb-relay` as a custom repository of type **Integration**.
-2. Install **Smart Bulb Relay**.
-3. Restart Home Assistant.
+For Home Assistant versions before 2026.11, open HACS and add
+`https://github.com/pschmitt/homeassistant-smart-bulb-relay` as a custom
+repository of type **Integration**.
+
+1. Install **Smart Bulb Relay**.
+2. Restart Home Assistant.
 
 ### Manual
 
