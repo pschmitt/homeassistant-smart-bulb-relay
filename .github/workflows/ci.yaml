@@ -10,13 +10,9 @@ permissions:
 jobs:
   hassfest:
     name: Hassfest
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: home-assistant/actions/hassfest@master
+    uses: pschmitt/ci-workflows/.github/workflows/home-assistant-hassfest.yaml@main
   ruff:
     name: Ruff
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: pschmitt/ci-workflows/.github/actions/homeassistant-ruff-v5@main
+    uses: pschmitt/ci-workflows/.github/workflows/home-assistant-ruff.yaml@main
+    with:
+      uv-v5: true
